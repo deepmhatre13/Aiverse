@@ -1,0 +1,42 @@
+AIverse Local Scaling Checklist
+==============================
+
+1) Start application instances
+- Run VS Code task: Start Local Scaled Stack
+  OR
+- Run deploy\scripts\start_backend_instances.ps1
+- Run deploy\scripts\start_celery_workers.ps1
+
+2) Validate backend node health
+- Open http://127.0.0.1:8000/api/health/
+- Open http://127.0.0.1:8001/api/health/
+
+3) Start local Nginx load balancer
+- Use config file: deploy\nginx\local-load-balancer.conf
+- Listen port: 8088
+- Verify load balancer health endpoint: http://127.0.0.1:8088/healthz
+
+4) Point frontend to load balancer
+- In frontend .env set:
+  VITE_BASE_API_URL=http://127.0.0.1:8088
+- Restart frontend dev server
+
+5) Verify auth and playground routes through LB
+- GET /api/users/me/ (expect 401 without token, 200 with valid token)
+- GET /api/playground/options/ (expect 401 without token)
+- POST /api/playground/jobs/ with token
+
+6) Verify Celery queue separation
+- default queue worker handles normal tasks
+- ml_train queue worker handles playground.tasks.run_training_task
+
+7) Observability checks
+- Confirm X-Request-ID response header exists on API responses
+- Confirm server logs include request_id field
+- Watch for 429 responses when throttle limits are exceeded
+
+8) Production next steps
+- Replace runserver with gunicorn/uvicorn workers
+- Place managed load balancer in front (Azure Application Gateway, Nginx, or Traefik)
+- Move media to object storage
+- Use separate Redis instances for cache and Celery in higher environments

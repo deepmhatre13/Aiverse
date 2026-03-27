@@ -1,0 +1,18 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+
+# Env
+.env
+.env.*
+.env.example
+
+# VS Code
+.vscode/
+
+.npm-cache/

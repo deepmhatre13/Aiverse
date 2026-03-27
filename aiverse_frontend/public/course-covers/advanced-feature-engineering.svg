@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Advanced Feature Engineering pipeline diagram">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0a1626"/><stop offset="100%" stop-color="#17344d"/></linearGradient></defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <text x="90" y="130" fill="#a7f3d0" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700">Advanced Feature Engineering</text>
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="22" fill="#dcfce7">
+    <rect x="110" y="230" width="220" height="90" rx="12" fill="#1b3c35" stroke="#34d399"/><text x="145" y="285">Raw Data</text>
+    <rect x="380" y="230" width="220" height="90" rx="12" fill="#1b3c35" stroke="#34d399"/><text x="420" y="285">Cleaning</text>
+    <rect x="650" y="230" width="220" height="90" rx="12" fill="#1b3c35" stroke="#34d399"/><text x="680" y="285">Encoding</text>
+    <rect x="920" y="230" width="220" height="90" rx="12" fill="#1b3c35" stroke="#34d399"/><text x="960" y="285">Selection</text>
+    <rect x="1190" y="230" width="300" height="90" rx="12" fill="#1b3c35" stroke="#34d399"/><text x="1240" y="285">Feature Store</text>
+  </g>
+  <g stroke="#6ee7b7" stroke-width="5" fill="none" stroke-linecap="round">
+    <path d="M335 275 L372 275"/><path d="M605 275 L642 275"/><path d="M875 275 L912 275"/><path d="M1145 275 L1182 275"/>
+  </g>
+  <rect x="180" y="430" width="1240" height="290" rx="16" fill="#0f2f2a" stroke="#10b981"/>
+  <g fill="#a7f3d0" font-family="Consolas, monospace" font-size="24">
+    <text x="230" y="500">Pipeline: impute -&gt; scale -&gt; target_encode -&gt; interactions -&gt; select_k_best</text>
+    <text x="230" y="560">Quality checks: null_rate, drift_score, leakage_guard</text>
+    <text x="230" y="620">Output: online_features + offline_training_features</text>
+  </g>
+</svg>

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Applied ML Engineering lifecycle">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0b1220"/><stop offset="100%" stop-color="#1a2f4b"/></linearGradient></defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <text x="90" y="130" fill="#dbeafe" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700">Applied Machine Learning Engineering</text>
+  <g fill="#122d4a" stroke="#60a5fa" stroke-width="3" font-family="Segoe UI, Arial, sans-serif" font-size="22">
+    <rect x="130" y="260" width="220" height="90" rx="12"/><rect x="390" y="260" width="220" height="90" rx="12"/><rect x="650" y="260" width="220" height="90" rx="12"/>
+    <rect x="910" y="260" width="220" height="90" rx="12"/><rect x="1170" y="260" width="220" height="90" rx="12"/>
+  </g>
+  <g fill="#bfdbfe" font-family="Segoe UI, Arial, sans-serif" font-size="22">
+    <text x="170" y="315">Experiment</text><text x="440" y="315">Train</text><text x="705" y="315">Validate</text><text x="955" y="315">Package</text><text x="1235" y="315">Deploy</text>
+  </g>
+  <g stroke="#93c5fd" stroke-width="5" fill="none" stroke-linecap="round">
+    <path d="M355 305 L382 305"/><path d="M615 305 L642 305"/><path d="M875 305 L902 305"/><path d="M1135 305 L1162 305"/>
+    <path d="M1280 355 L1280 470 L240 470 L240 355"/>
+  </g>
+  <rect x="200" y="530" width="1200" height="220" rx="16" fill="#0d2238" stroke="#38bdf8"/>
+  <g fill="#cbd5e1" font-family="Consolas, monospace" font-size="24">
+    <text x="250" y="605">Reproducibility: versioned data + model + code</text>
+    <text x="250" y="655">Quality Gates: metrics, tests, bias checks, latency SLA</text>
+    <text x="250" y="705">Output: production-ready ML service</text>
+  </g>
+</svg>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Deep learning neural network diagram">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#110f1f"/><stop offset="100%" stop-color="#1c1533"/></linearGradient></defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <text x="90" y="130" fill="#f5d0fe" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700">Introduction to Deep Learning</text>
+  <g stroke="#c084fc" stroke-width="2" fill="none">
+    <path d="M380 280 L620 220"/><path d="M380 360 L620 290"/><path d="M380 440 L620 360"/><path d="M380 520 L620 430"/>
+    <path d="M700 220 L940 280"/><path d="M700 290 L940 360"/><path d="M700 360 L940 440"/><path d="M700 430 L940 520"/>
+    <path d="M1020 280 L1260 350"/><path d="M1020 360 L1260 420"/><path d="M1020 440 L1260 490"/>
+  </g>
+  <g fill="#6d28d9" stroke="#e9d5ff" stroke-width="3">
+    <circle cx="320" cy="280" r="32"/><circle cx="320" cy="360" r="32"/><circle cx="320" cy="440" r="32"/><circle cx="320" cy="520" r="32"/>
+    <circle cx="660" cy="220" r="32"/><circle cx="660" cy="290" r="32"/><circle cx="660" cy="360" r="32"/><circle cx="660" cy="430" r="32"/>
+    <circle cx="980" cy="280" r="32"/><circle cx="980" cy="360" r="32"/><circle cx="980" cy="440" r="32"/>
+    <circle cx="1300" cy="350" r="36"/><circle cx="1300" cy="420" r="36"/><circle cx="1300" cy="490" r="36"/>
+  </g>
+  <rect x="180" y="650" width="1240" height="140" rx="16" fill="#2e1065" stroke="#c084fc"/>
+  <text x="240" y="735" fill="#f3e8ff" font-family="Segoe UI, Arial, sans-serif" font-size="28">Layers - Activations - Backpropagation - Loss Curves</text>
+</svg>

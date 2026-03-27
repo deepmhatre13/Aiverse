@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aiverse - Thinking-First ML Education</title>
+    <meta name="description" content="Master machine learning through deep understanding. Solve real ML problems, learn from structured courses, and get AI mentorship." />
+    <meta name="author" content="Aiverse" />
+    <meta name="keywords" content="machine learning, ML, AI, education, courses, problems, data science" />
+
+    <meta property="og:title" content="Aiverse - Thinking-First ML Education" />
+    <meta property="og:description" content="Master machine learning through deep understanding. Build real ML intuition, not just code snippets." />
+    <meta property="og:type" content="website" />
+    
+
+    
+    <meta name="twitter:site" content="@Aiverse" />
+    
+
+    <link rel="canonical" href="https://aiverse.dev" />
+    <script>
+      (() => {
+        try {
+          const storageKey = "aiverse-theme";
+          const stored = localStorage.getItem(storageKey);
+          const systemDark =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
+          const theme =
+            stored === "dark" || stored === "light"
+              ? stored
+              : systemDark
+                ? "dark"
+                : "light";
+
+          const root = document.documentElement;
+          root.classList.remove("light", "dark");
+          root.classList.add(theme);
+        } catch {
+          // no-op
+        }
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
