@@ -1,14 +1,21 @@
 import os
+from dotenv import load_dotenv
 from pathlib import Path
-import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / ".env")
+
+import dj_database_url
+print("ENV FILE PATH:", BASE_DIR / ".env")
+print("FILE EXISTS:", (BASE_DIR / ".env").exists())
 
 # ======================
 # CORE
 # ======================
+print("DATABASE_URL:", os.environ.get("DATABASE_URL"))
 
-SECRET_KEY = os.environ["SECRET_KEY"]  # must exist
+SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key")
 
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
@@ -97,7 +104,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # REDIS
 # ======================
 
-REDIS_URL = os.environ["REDIS_URL"]
+REDIS_URL = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")
 
 # ======================
 # CACHE
@@ -116,6 +123,10 @@ CACHES = {
 
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
+
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
 
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
