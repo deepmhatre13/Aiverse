@@ -1,0 +1,131 @@
+services:
+  - type: web
+    name: aiverse-backend-web
+    env: python
+    rootDir: .
+    plan: starter
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: daphne -b 0.0.0.0 -p $PORT backend.asgi:application
+    healthCheckPath: /api/health/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: DEBUG
+        value: "False"
+      - key: IS_PRODUCTION
+        value: "True"
+      - key: SECURE_SSL_REDIRECT
+        value: "True"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aiverse-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: aiverse-redis
+          property: connectionString
+      - key: SECRET_KEY
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: STRIPE_MODE
+        value: live
+      - key: STRIPE_TEST_SECRET_KEY
+        sync: false
+      - key: STRIPE_TEST_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_TEST_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_LIVE_SECRET_KEY
+        sync: false
+      - key: STRIPE_LIVE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_LIVE_WEBHOOK_SECRET
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: HF_API_KEY
+        sync: false
+
+  - type: worker
+    name: aiverse-celery-worker
+    env: python
+    rootDir: .
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A backend worker -l info --concurrency=2
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: DEBUG
+        value: "False"
+      - key: IS_PRODUCTION
+        value: "True"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aiverse-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: aiverse-redis
+          property: connectionString
+      - key: SECRET_KEY
+        sync: false
+      - key: STRIPE_MODE
+        value: live
+      - key: STRIPE_TEST_SECRET_KEY
+        sync: false
+      - key: STRIPE_TEST_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_TEST_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_LIVE_SECRET_KEY
+        sync: false
+      - key: STRIPE_LIVE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_LIVE_WEBHOOK_SECRET
+        sync: false
+
+  - type: worker
+    name: aiverse-celery-beat
+    env: python
+    rootDir: .
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A backend beat -l info
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: DEBUG
+        value: "False"
+      - key: IS_PRODUCTION
+        value: "True"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aiverse-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: aiverse-redis
+          property: connectionString
+      - key: SECRET_KEY
+        sync: false
+
+  - type: redis
+    name: aiverse-redis
+    ipAllowList: []
+    plan: starter
+    maxmemoryPolicy: noeviction
+
+databases:
+  - name: aiverse-postgres
+    plan: starter

@@ -3,8 +3,6 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 
-from playground.models import Experiment
-
 
 class PlaygroundTrainingConsumer(AsyncWebsocketConsumer):
     """
@@ -37,5 +35,6 @@ class PlaygroundTrainingConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _user_can_access(self, experiment_id: int, user_id: int) -> bool:
+        from playground.models import Experiment
         return Experiment.objects.filter(id=experiment_id, user_id=user_id).exists()
 

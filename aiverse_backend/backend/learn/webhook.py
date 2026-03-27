@@ -26,8 +26,6 @@ from .models import Payment, Enrollment, Course
 
 logger = logging.getLogger(__name__)
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
-
 
 @csrf_exempt
 @require_POST
@@ -41,9 +39,14 @@ def stripe_webhook(request):
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
     webhook_secret = getattr(settings, 'STRIPE_WEBHOOK_SECRET', '')
+    stripe.api_key = getattr(settings, 'STRIPE_SECRET_KEY', None)
     
     if not webhook_secret:
         logger.error("STRIPE_WEBHOOK_SECRET not configured")
+        return HttpResponse(status=500)
+
+    if not stripe.api_key:
+        logger.error("STRIPE_SECRET_KEY not configured")
         return HttpResponse(status=500)
     
     try:

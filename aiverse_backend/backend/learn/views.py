@@ -1151,9 +1151,9 @@ class CreateRazorpayOrderView(APIView):
                 )
                 if not result:
                     return Response({
-                        'error': 'Payment error',
-                        'message': 'Unable to create order.',
-                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                        'error': 'Razorpay unavailable',
+                        'message': 'Unable to create order at the moment. Please retry shortly.',
+                    }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
                 enrollment.payment_reference = result['order_id']
                 enrollment.save(update_fields=['payment_reference'])
@@ -1168,9 +1168,9 @@ class CreateRazorpayOrderView(APIView):
         except Exception as e:
             logger.exception(f'Razorpay order creation failed: {e}')
             return Response({
-                'error': 'Payment error',
-                'message': 'Unable to create order. Please try again.',
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                'error': 'Razorpay unavailable',
+                'message': 'Payment gateway is temporarily unavailable.',
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
 class VerifyRazorpayPaymentView(APIView):

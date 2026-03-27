@@ -12,6 +12,7 @@ from django.conf import settings
 from urllib import parse, request
 import json
 import uuid
+from django.db import DatabaseError, IntegrityError
 
 from .serializers import (
     UserPublicSerializer, UserProfileSerializer,
@@ -135,6 +136,14 @@ class GoogleLoginView(APIView):
         except Exception:
             return Response({'error': 'Invalid Google token'}, status=status.HTTP_400_BAD_REQUEST)
 
+        expected_client_id = getattr(settings, 'GOOGLE_OAUTH_CLIENT_ID', None)
+        token_aud = (tokeninfo.get('aud') or '').strip()
+        if expected_client_id and token_aud and token_aud != expected_client_id:
+            return Response(
+                {'error': 'Google token audience mismatch for configured client ID'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         email = (tokeninfo.get('email') or '').strip().lower()
         email_verified = str(tokeninfo.get('email_verified', '')).lower() == 'true'
 
@@ -143,34 +152,40 @@ class GoogleLoginView(APIView):
         if not email_verified:
             return Response({'error': 'Google email is not verified'}, status=status.HTTP_400_BAD_REQUEST)
 
-        name = (tokeninfo.get('name') or '').strip()
-        picture = (tokeninfo.get('picture') or '').strip()
+        name = (tokeninfo.get('name') or '').strip()[:100]
+        picture = (tokeninfo.get('picture') or '').strip()[:200]
 
-        user = User.objects.filter(email__iexact=email).first()
-        if user is None:
-            user = User.objects.create(
-                email=email,
-                username=_unique_username_from_email(email),
-                display_name=name or email.split('@')[0],
-                avatar_url=picture,
-                auth_method='google',
-                is_active=True,
+        try:
+            user = User.objects.filter(email__iexact=email).first()
+            if user is None:
+                user = User.objects.create(
+                    email=email,
+                    username=_unique_username_from_email(email),
+                    display_name=name or email.split('@')[0],
+                    avatar_url=picture,
+                    auth_method='google',
+                    is_active=True,
+                )
+                user.set_unusable_password()
+                user.save(update_fields=['password'])
+            else:
+                updated_fields = []
+                if user.auth_method != 'google':
+                    user.auth_method = 'google'
+                    updated_fields.append('auth_method')
+                if name and user.display_name != name:
+                    user.display_name = name
+                    updated_fields.append('display_name')
+                if picture and user.avatar_url != picture:
+                    user.avatar_url = picture
+                    updated_fields.append('avatar_url')
+                if updated_fields:
+                    user.save(update_fields=updated_fields)
+        except (IntegrityError, DatabaseError):
+            return Response(
+                {'error': 'Unable to create/update user from Google profile data'},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-            user.set_unusable_password()
-            user.save(update_fields=['password'])
-        else:
-            updated_fields = []
-            if user.auth_method != 'google':
-                user.auth_method = 'google'
-                updated_fields.append('auth_method')
-            if name and user.display_name != name:
-                user.display_name = name
-                updated_fields.append('display_name')
-            if picture and user.avatar_url != picture:
-                user.avatar_url = picture
-                updated_fields.append('avatar_url')
-            if updated_fields:
-                user.save(update_fields=updated_fields)
 
         refresh = RefreshToken.for_user(user)
         return Response(
