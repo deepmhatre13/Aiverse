@@ -13,12 +13,12 @@ export const mentorAPI = {
    * ----------------------------- */
 
   createSession: async () => {
-    const res = await api.post('api/mentor/session/start/');
+    const res = await api.post('/api/mentor/session/start/');
     return res;
   },
 
   listSessions: async () => {
-    const res = await api.get('api/mentor/sessions/');
+    const res = await api.get('/api/mentor/sessions/');
     return res;
   },
 
@@ -32,7 +32,7 @@ export const mentorAPI = {
       hasToken: Boolean(localStorage.getItem('access')),
     });
     const res = await api.post(
-      `api/mentor/session/${sessionId}/ask/`,
+      `/api/mentor/session/${sessionId}/ask/`,
       { question }
     );
     console.debug('[MentorAPI] askQuestion response', res.data);
@@ -50,7 +50,7 @@ export const mentorAPI = {
         hasToken: Boolean(localStorage.getItem('access')),
       });
       const res = await api.get(
-        `api/mentor/task/${taskId}/status/`
+        `/api/mentor/task/${taskId}/status/`
       );
       console.debug('[MentorAPI] checkTaskStatus response', res.data);
       return res;
@@ -66,7 +66,7 @@ export const mentorAPI = {
 
   getMessages: async (sessionId) => {
     const res = await api.get(
-      `api/mentor/session/${sessionId}/messages/`
+      `/api/mentor/session/${sessionId}/messages/`
     );
     return res;
   },
