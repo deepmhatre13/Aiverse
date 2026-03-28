@@ -13,12 +13,18 @@ function unwrap(body) {
 
 export const playgroundAPI = {
   getOptions: async () => {
+    console.debug('[PlaygroundAPI] getOptions', {
+      hasToken: Boolean(localStorage.getItem('access') || localStorage.getItem('access_token')),
+    });
     const response = await api.get('/api/playground/options/');
+    console.debug('[PlaygroundAPI] getOptions response', response.data);
     return unwrap(response.data);
   },
 
   createJob: async (data) => {
+    console.debug('[PlaygroundAPI] createJob payload', data);
     const response = await api.post('/api/playground/jobs/', data);
+    console.debug('[PlaygroundAPI] createJob response', response.data);
     return unwrap(response.data);
   },
 
@@ -37,7 +43,9 @@ export const playgroundAPI = {
   },
 
   getJobStatus: async (jobId) => {
+    console.debug('[PlaygroundAPI] getJobStatus', { jobId });
     const response = await api.get(`/api/playground/jobs/${jobId}/status/`);
+    console.debug('[PlaygroundAPI] getJobStatus response', response.data);
     return unwrap(response.data);
   },
 

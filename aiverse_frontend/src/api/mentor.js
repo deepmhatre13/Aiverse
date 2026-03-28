@@ -27,30 +27,34 @@ export const mentorAPI = {
    * ----------------------------- */
 
   askQuestion: async (sessionId, question) => {
+    console.debug('[MentorAPI] askQuestion', {
+      sessionId,
+      hasToken: Boolean(localStorage.getItem('access') || localStorage.getItem('access_token')),
+    });
     const res = await api.post(
       `api/mentor/session/${sessionId}/ask/`,
       { question }
     );
+    console.debug('[MentorAPI] askQuestion response', res.data);
     return res;
   },
 
   /* -----------------------------
-   * Task polling (NO AUTH REQUIRED)
+   * Task polling
    * ----------------------------- */
 
   checkTaskStatus: async (taskId) => {
     try {
+      console.debug('[MentorAPI] checkTaskStatus', {
+        taskId,
+        hasToken: Boolean(localStorage.getItem('access') || localStorage.getItem('access_token')),
+      });
       const res = await api.get(
         `api/mentor/task/${taskId}/status/`
       );
+      console.debug('[MentorAPI] checkTaskStatus response', res.data);
       return res;
     } catch (err) {
-      /**
-       * IMPORTANT:
-       * - Polling endpoint has no auth requirement
-       * - Any error should break polling loop
-       * - Log and re-throw for Mentor.jsx to handle
-       */
       console.error('[MentorAPI] Task status failed', err);
       throw err;
     }

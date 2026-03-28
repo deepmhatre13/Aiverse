@@ -242,6 +242,13 @@ def ask_mentor_v2(request, session_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     question = serializer.validated_data['question']
+    logger.info("[Mentor] request.user=%s", request.user)
+    logger.info(
+        "[Mentor] ask_mentor_v2 user=%s authenticated=%s session=%s",
+        getattr(request.user, 'id', None),
+        bool(getattr(request.user, 'is_authenticated', False)),
+        session_id,
+    )
     
     try:
         # Save user message IMMEDIATELY (optimistic update)
@@ -282,7 +289,7 @@ def ask_mentor_v2(request, session_id):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def check_task_status(request, task_id):
     """
     Check if Celery mentor task is complete.
@@ -290,7 +297,7 @@ def check_task_status(request, task_id):
     CRITICAL: This endpoint determines whether frontend continues polling or stops.
     It MUST return accurate status to prevent infinite "Mentor is thinking..." loops.
     
-    No authentication required: polling is a lightweight status check.
+    Requires authentication.
     Task completion is checked via Celery AsyncResult, not the database.
     
     Returns:
@@ -303,12 +310,6 @@ def check_task_status(request, task_id):
     - If status === "processing": Continue polling (wait 1 second, try again)
     - If status === "error": Stop polling, show error to user
     
-    Why AllowAny:
-    1. Frontend polling must not be blocked by auth
-    2. Status is non-sensitive data (only tells if task is done)
-    3. Prevents infinite 401 loops when auth is unreliable
-    4. Task ID is opaque and not guessable
-    
     Celery States:
     - PENDING: Task waiting to execute (not yet picked up by worker)
     - RUNNING: Task currently executing
@@ -318,7 +319,14 @@ def check_task_status(request, task_id):
     - REVOKED: Task was cancelled
     """
     try:
-        # Check Celery task state directly (AllowAny endpoint)
+        logger.info("[Mentor] status request.user=%s", request.user)
+        logger.info(
+            "[Mentor] check_task_status user=%s authenticated=%s task=%s",
+            getattr(request.user, 'id', None),
+            bool(getattr(request.user, 'is_authenticated', False)),
+            task_id,
+        )
+        # Check Celery task state directly
         result = AsyncResult(task_id)
         
         # Get actual Celery state

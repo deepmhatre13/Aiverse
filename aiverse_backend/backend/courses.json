@@ -1,0 +1,446 @@
+[
+{
+    "model": "learn.course",
+    "pk": 9,
+    "fields": {
+        "title": "Machine Learning Foundations",
+        "slug": "machine-learning-foundations",
+        "description": "Master the fundamental concepts of Machine Learning from scratch.\n\nThis comprehensive course covers:\n• What is Machine Learning and its types (supervised, unsupervised, reinforcement)\n• Linear algebra and calculus basics for ML\n• Probability and statistics fundamentals\n• The ML workflow: data collection, preprocessing, training, evaluation\n• Bias-variance tradeoff and model selection\n• Practical implementation with Python and scikit-learn\n\nPerfect for beginners who want to build a solid foundation in ML concepts before diving into advanced topics.",
+        "short_description": "Build a solid foundation in Machine Learning concepts and mathematics.",
+        "thumbnail": "https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=800",
+        "level": "beginner",
+        "estimated_duration_hours": "2.5",
+        "track": null,
+        "required_rating": null,
+        "is_free": true,
+        "is_paid": false,
+        "price": null,
+        "currency": "USD",
+        "total_lessons": 6,
+        "total_duration_minutes": 150,
+        "rating_average": "0.00",
+        "rating_count": 0,
+        "students_count": 0,
+        "completion_rate": "0.00",
+        "instructor_name": "AIverse ML Team",
+        "instructor_bio": "",
+        "instructor_avatar": "",
+        "prerequisites": [
+            "Basic Python programming knowledge",
+            "High school level mathematics"
+        ],
+        "what_youll_learn": [
+            "Understand the core concepts of Machine Learning",
+            "Learn the math foundations: linear algebra, calculus, probability",
+            "Implement basic ML algorithms from scratch",
+            "Use scikit-learn for practical ML projects",
+            "Evaluate and compare different ML models"
+        ],
+        "target_audience": [
+            "Beginners who want to start their ML journey",
+            "Software developers looking to transition into ML",
+            "Students studying computer science or data science"
+        ],
+        "tags": [
+            "machine learning",
+            "beginner",
+            "fundamentals",
+            "python",
+            "scikit-learn"
+        ],
+        "is_published": true,
+        "published_at": "2026-02-24T16:38:55.139Z",
+        "created_at": "2026-02-24T16:38:55.159Z",
+        "updated_at": "2026-02-24T16:38:55.159Z"
+    }
+},
+{
+    "model": "learn.course",
+    "pk": 10,
+    "fields": {
+        "title": "Python for Data Science",
+        "slug": "python-for-data-science",
+        "description": "Master Python programming for Data Science and ML applications.\n\nThis course teaches you:\n• Python fundamentals refresher for data work\n• NumPy for numerical computing\n• Pandas for data manipulation and analysis\n• Matplotlib and Seaborn for visualization\n• Data cleaning and preprocessing techniques\n• Working with real-world datasets\n\nBuild the Python skills essential for any ML practitioner.",
+        "short_description": "Learn Python, NumPy, Pandas, and visualization for data science.",
+        "thumbnail": "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=800",
+        "level": "beginner",
+        "estimated_duration_hours": "3.0",
+        "track": null,
+        "required_rating": null,
+        "is_free": true,
+        "is_paid": false,
+        "price": null,
+        "currency": "USD",
+        "total_lessons": 6,
+        "total_duration_minutes": 180,
+        "rating_average": "0.00",
+        "rating_count": 0,
+        "students_count": 0,
+        "completion_rate": "0.00",
+        "instructor_name": "AIverse ML Team",
+        "instructor_bio": "",
+        "instructor_avatar": "",
+        "prerequisites": [
+            "Basic programming concepts (any language)"
+        ],
+        "what_youll_learn": [
+            "Master NumPy for efficient numerical computing",
+            "Use Pandas for data manipulation and analysis",
+            "Create stunning visualizations with Matplotlib and Seaborn",
+            "Clean and preprocess real-world datasets",
+            "Handle missing data and outliers"
+        ],
+        "target_audience": [
+            "Beginners learning Python for data science",
+            "Programmers from other languages transitioning to Python",
+            "Anyone who wants to work with data in Python"
+        ],
+        "tags": [
+            "python",
+            "numpy",
+            "pandas",
+            "data science",
+            "visualization",
+            "beginner"
+        ],
+        "is_published": true,
+        "published_at": "2026-02-24T16:38:55.404Z",
+        "created_at": "2026-02-24T16:38:55.408Z",
+        "updated_at": "2026-02-24T16:38:55.408Z"
+    }
+},
+{
+    "model": "learn.course",
+    "pk": 11,
+    "fields": {
+        "title": "Introduction to Deep Learning",
+        "slug": "introduction-to-deep-learning",
+        "description": "Understand the fundamentals of Deep Learning and Neural Networks.\n\nCourse contents:\n• Neural network architecture and components\n• Activation functions and their properties\n• Backpropagation and gradient descent\n• Introduction to TensorFlow and Keras\n• Building your first neural network\n• CNNs, RNNs, and their applications\n• Transfer learning basics\n\nStart your deep learning journey with this foundational course.",
+        "short_description": "Learn neural networks, backpropagation, and build with Keras.",
+        "thumbnail": "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=800",
+        "level": "intermediate",
+        "estimated_duration_hours": "2.5",
+        "track": null,
+        "required_rating": null,
+        "is_free": true,
+        "is_paid": false,
+        "price": null,
+        "currency": "USD",
+        "total_lessons": 6,
+        "total_duration_minutes": 150,
+        "rating_average": "0.00",
+        "rating_count": 0,
+        "students_count": 0,
+        "completion_rate": "0.00",
+        "instructor_name": "AIverse ML Team",
+        "instructor_bio": "",
+        "instructor_avatar": "",
+        "prerequisites": [
+            "Machine Learning fundamentals",
+            "Python programming",
+            "Basic linear algebra"
+        ],
+        "what_youll_learn": [
+            "Understand how neural networks work",
+            "Implement backpropagation from scratch",
+            "Build neural networks with TensorFlow/Keras",
+            "Understand CNNs for image tasks",
+            "Learn RNN basics for sequential data"
+        ],
+        "target_audience": [
+            "ML practitioners ready to learn deep learning",
+            "Developers interested in neural networks",
+            "Students studying AI/ML"
+        ],
+        "tags": [
+            "deep learning",
+            "neural networks",
+            "tensorflow",
+            "keras",
+            "cnn",
+            "rnn"
+        ],
+        "is_published": true,
+        "published_at": "2026-02-24T16:38:55.520Z",
+        "created_at": "2026-02-24T16:38:55.526Z",
+        "updated_at": "2026-02-24T16:38:55.526Z"
+    }
+},
+{
+    "model": "learn.course",
+    "pk": 12,
+    "fields": {
+        "title": "Applied Machine Learning Engineering",
+        "slug": "applied-ml-engineering",
+        "description": "Transform from ML beginner to production ML engineer.\n\nThis comprehensive course teaches you:\n• End-to-end ML pipeline development\n• Feature engineering at scale\n• Model selection and hyperparameter tuning\n• Cross-validation strategies\n• Handling imbalanced datasets\n• Ensemble methods and model stacking\n• A/B testing for ML models\n• Production deployment considerations\n\nReal-world projects with industry datasets. Build a portfolio of production-ready ML solutions.",
+        "short_description": "Build production-ready ML pipelines and real-world solutions.",
+        "thumbnail": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800",
+        "level": "intermediate",
+        "estimated_duration_hours": "6.2",
+        "track": null,
+        "required_rating": null,
+        "is_free": false,
+        "is_paid": true,
+        "price": "79.00",
+        "currency": "USD",
+        "total_lessons": 8,
+        "total_duration_minutes": 370,
+        "rating_average": "0.00",
+        "rating_count": 0,
+        "students_count": 0,
+        "completion_rate": "0.00",
+        "instructor_name": "AIverse ML Team",
+        "instructor_bio": "",
+        "instructor_avatar": "",
+        "prerequisites": [
+            "Machine Learning Foundations course",
+            "Python proficiency",
+            "Basic statistics knowledge"
+        ],
+        "what_youll_learn": [
+            "Build end-to-end ML pipelines",
+            "Master advanced feature engineering",
+            "Implement ensemble methods and stacking",
+            "Handle real-world data challenges",
+            "Deploy models to production"
+        ],
+        "target_audience": [
+            "ML practitioners ready for production work",
+            "Data scientists building real products",
+            "Engineers transitioning to ML roles"
+        ],
+        "tags": [
+            "machine learning",
+            "production",
+            "pipelines",
+            "feature engineering",
+            "intermediate"
+        ],
+        "is_published": true,
+        "published_at": "2026-02-24T16:38:55.631Z",
+        "created_at": "2026-02-24T16:38:55.635Z",
+        "updated_at": "2026-02-24T16:38:55.635Z"
+    }
+},
+{
+    "model": "learn.course",
+    "pk": 13,
+    "fields": {
+        "title": "Production ML Systems Design",
+        "slug": "production-ml-systems-design",
+        "description": "Design and architect ML systems that scale to millions of users.\n\nLearn how top companies build ML systems:\n• ML system design patterns\n• Data pipelines and feature stores\n• Model serving architectures (online vs batch)\n• Scalability and latency optimization\n• Monitoring and observability\n• ML infrastructure in the cloud (AWS/GCP/Azure)\n• Cost optimization strategies\n• Case studies from Netflix, Uber, and Google\n\nEssential for ML engineers working on production systems.",
+        "short_description": "Design scalable ML systems for production environments.",
+        "thumbnail": "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800",
+        "level": "advanced",
+        "estimated_duration_hours": "6.6",
+        "track": null,
+        "required_rating": null,
+        "is_free": false,
+        "is_paid": true,
+        "price": "99.00",
+        "currency": "USD",
+        "total_lessons": 9,
+        "total_duration_minutes": 395,
+        "rating_average": "0.00",
+        "rating_count": 0,
+        "students_count": 0,
+        "completion_rate": "0.00",
+        "instructor_name": "AIverse ML Team",
+        "instructor_bio": "",
+        "instructor_avatar": "",
+        "prerequisites": [
+            "Applied ML Engineering course",
+            "Software engineering experience",
+            "Basic cloud platform knowledge"
+        ],
+        "what_youll_learn": [
+            "Design ML systems at scale",
+            "Build efficient data and feature pipelines",
+            "Implement model serving strategies",
+            "Monitor ML systems in production",
+            "Optimize for latency and cost"
+        ],
+        "target_audience": [
+            "Senior ML engineers",
+            "ML architects and tech leads",
+            "Platform engineers supporting ML teams"
+        ],
+        "tags": [
+            "systems design",
+            "production",
+            "mlops",
+            "architecture",
+            "advanced"
+        ],
+        "is_published": true,
+        "published_at": "2026-02-24T16:38:55.768Z",
+        "created_at": "2026-02-24T16:38:55.774Z",
+        "updated_at": "2026-02-24T16:38:55.774Z"
+    }
+},
+{
+    "model": "learn.course",
+    "pk": 14,
+    "fields": {
+        "title": "Advanced Feature Engineering",
+        "slug": "advanced-feature-engineering",
+        "description": "Master the art of creating features that make models win.\n\nTopics covered:\n• Feature engineering philosophy and workflow\n• Numeric feature transformations\n• Categorical encoding strategies\n• Text feature extraction (TF-IDF, embeddings)\n• Time series feature engineering\n• Geospatial features\n• Automated feature generation\n• Feature selection methods\n• Domain-specific feature engineering\n\nFeatures are often more important than algorithms. Learn to create winning features.",
+        "short_description": "Create powerful features that make AI models excel.",
+        "thumbnail": "https://images.unsplash.com/photo-1518186285589-2f7649de83e0?w=800",
+        "level": "intermediate",
+        "estimated_duration_hours": "4.9",
+        "track": null,
+        "required_rating": null,
+        "is_free": false,
+        "is_paid": true,
+        "price": "69.00",
+        "currency": "USD",
+        "total_lessons": 8,
+        "total_duration_minutes": 295,
+        "rating_average": "0.00",
+        "rating_count": 0,
+        "students_count": 0,
+        "completion_rate": "0.00",
+        "instructor_name": "AIverse ML Team",
+        "instructor_bio": "",
+        "instructor_avatar": "",
+        "prerequisites": [
+            "Machine Learning Foundations",
+            "Python and Pandas proficiency"
+        ],
+        "what_youll_learn": [
+            "Transform raw data into powerful features",
+            "Handle different data types effectively",
+            "Use automated feature generation tools",
+            "Select the most predictive features",
+            "Apply domain knowledge to feature design"
+        ],
+        "target_audience": [
+            "Data scientists improving model performance",
+            "ML engineers working with diverse data",
+            "Kaggle competitors and ML practitioners"
+        ],
+        "tags": [
+            "feature engineering",
+            "preprocessing",
+            "data science",
+            "intermediate"
+        ],
+        "is_published": true,
+        "published_at": "2026-02-24T16:38:55.926Z",
+        "created_at": "2026-02-24T16:38:55.933Z",
+        "updated_at": "2026-02-24T16:38:55.933Z"
+    }
+},
+{
+    "model": "learn.course",
+    "pk": 15,
+    "fields": {
+        "title": "MLOps & Deployment",
+        "slug": "mlops-deployment",
+        "description": "Bridge the gap between ML development and production deployment.\n\nComprehensive MLOps coverage:\n• MLOps principles and maturity model\n• Version control for ML (code, data, models)\n• CI/CD pipelines for ML\n• Model packaging and containerization\n• Kubernetes for ML workloads\n• Model registries and artifact management\n• Deployment strategies (canary, blue-green)\n• Monitoring model performance and drift\n• Retraining automation\n\nBecome a full-stack ML engineer with deployment expertise.",
+        "short_description": "Deploy, monitor, and maintain ML models in production.",
+        "thumbnail": "https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?w=800",
+        "level": "advanced",
+        "estimated_duration_hours": "6.6",
+        "track": null,
+        "required_rating": null,
+        "is_free": false,
+        "is_paid": true,
+        "price": "109.00",
+        "currency": "USD",
+        "total_lessons": 9,
+        "total_duration_minutes": 395,
+        "rating_average": "0.00",
+        "rating_count": 0,
+        "students_count": 0,
+        "completion_rate": "0.00",
+        "instructor_name": "AIverse ML Team",
+        "instructor_bio": "",
+        "instructor_avatar": "",
+        "prerequisites": [
+            "Applied ML Engineering course",
+            "Basic Docker knowledge",
+            "Command line proficiency"
+        ],
+        "what_youll_learn": [
+            "Implement MLOps best practices",
+            "Build CI/CD pipelines for ML",
+            "Deploy models with Docker and Kubernetes",
+            "Monitor models for drift and degradation",
+            "Automate model retraining"
+        ],
+        "target_audience": [
+            "ML engineers deploying models",
+            "DevOps engineers supporting ML teams",
+            "Data scientists wanting deployment skills"
+        ],
+        "tags": [
+            "mlops",
+            "deployment",
+            "docker",
+            "kubernetes",
+            "ci/cd",
+            "advanced"
+        ],
+        "is_published": true,
+        "published_at": "2026-02-24T16:38:56.205Z",
+        "created_at": "2026-02-24T16:38:56.216Z",
+        "updated_at": "2026-02-24T16:38:56.216Z"
+    }
+},
+{
+    "model": "learn.course",
+    "pk": 16,
+    "fields": {
+        "title": "Real-World ML Case Studies",
+        "slug": "real-world-ml-case-studies",
+        "description": "Learn from production ML systems at top tech companies.\n\nDeep dive into:\n• Recommendation systems (Netflix, Spotify, YouTube)\n• Search ranking (Google, Amazon)\n• Fraud detection (Stripe, PayPal)\n• Dynamic pricing (Uber, Airbnb)\n• Computer vision in production (Tesla, Meta)\n• NLP at scale (OpenAI, ChatGPT architecture)\n• Personalization systems\n• Ad targeting and bidding\n\nEach case study covers problem formulation, system design, and lessons learned.",
+        "short_description": "Learn from production ML systems at top tech companies.",
+        "thumbnail": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800",
+        "level": "advanced",
+        "estimated_duration_hours": "6.3",
+        "track": null,
+        "required_rating": null,
+        "is_free": false,
+        "is_paid": true,
+        "price": "89.00",
+        "currency": "USD",
+        "total_lessons": 8,
+        "total_duration_minutes": 380,
+        "rating_average": "0.00",
+        "rating_count": 0,
+        "students_count": 0,
+        "completion_rate": "0.00",
+        "instructor_name": "AIverse ML Team",
+        "instructor_bio": "",
+        "instructor_avatar": "",
+        "prerequisites": [
+            "Production ML Systems Design recommended",
+            "Understanding of ML fundamentals"
+        ],
+        "what_youll_learn": [
+            "Understand real-world ML system design",
+            "Learn from industry successes and failures",
+            "Apply lessons to your own ML projects",
+            "Think like a senior ML engineer",
+            "Design systems for specific domains"
+        ],
+        "target_audience": [
+            "ML engineers learning system design",
+            "Architects designing ML solutions",
+            "Tech leads evaluating ML approaches"
+        ],
+        "tags": [
+            "case studies",
+            "system design",
+            "production",
+            "advanced"
+        ],
+        "is_published": true,
+        "published_at": "2026-02-24T16:38:56.329Z",
+        "created_at": "2026-02-24T16:38:56.337Z",
+        "updated_at": "2026-02-24T16:38:56.337Z"
+    }
+}
+]

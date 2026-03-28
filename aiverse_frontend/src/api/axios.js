@@ -2,7 +2,23 @@ import axios from 'axios';
 
 // Default to http://127.0.0.1:8000 (WITHOUT /api suffix)
 // Paths must include /api prefix for routing
-const BASE_API_URL = import.meta.env.VITE_BASE_API_URL || 'http://127.0.0.1:8000';
+const BASE_API_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_BASE_API_URL ||
+  'http://127.0.0.1:8000';
+
+const getAccessToken = () => localStorage.getItem('access') || localStorage.getItem('access_token');
+const getRefreshToken = () => localStorage.getItem('refresh') || localStorage.getItem('refresh_token');
+
+const setAccessToken = (token) => {
+  localStorage.setItem('access', token);
+  localStorage.setItem('access_token', token);
+};
+
+const setRefreshToken = (token) => {
+  localStorage.setItem('refresh', token);
+  localStorage.setItem('refresh_token', token);
+};
 
 const api = axios.create({
   baseURL: BASE_API_URL,
@@ -11,7 +27,12 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
+  const token = getAccessToken();
+  console.debug('[API][request]', {
+    method: config.method,
+    url: config.url,
+    hasToken: Boolean(token),
+  });
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -19,14 +40,27 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.debug('[API][response]', {
+      method: response.config?.method,
+      url: response.config?.url,
+      status: response.status,
+    });
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
+    console.debug('[API][error]', {
+      method: originalRequest?.method,
+      url: originalRequest?.url,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      const refresh = localStorage.getItem('refresh_token');
+      const refresh = getRefreshToken();
       if (!refresh) {
         window.location.href = '/login';
         return Promise.reject(error);
@@ -38,7 +72,10 @@ api.interceptors.response.use(
           { refresh }
         );
 
-        localStorage.setItem('access_token', res.data.access);
+        if (res.data?.refresh) {
+          setRefreshToken(res.data.refresh);
+        }
+        setAccessToken(res.data.access);
         originalRequest.headers.Authorization = `Bearer ${res.data.access}`;
         return api(originalRequest);
       } catch {
