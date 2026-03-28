@@ -18,7 +18,7 @@ const navLinks = [
   { name: 'Mentor', href: '/mentor', icon: MessageSquare },
   { name: 'Playground', href: '/playground', icon: Zap },
   { name: 'Discussions', href: '/discussions', icon: MessageSquare },
-  { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
+  // { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
   { name: 'Live', href: '/live', icon: Activity },
 ];
 

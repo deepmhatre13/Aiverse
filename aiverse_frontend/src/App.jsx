@@ -58,7 +58,8 @@ function App() {
               {/* Redirects from old routes */}
               <Route path="/dashboard" element={<Navigate to="/live" replace />} />
               <Route path="/timeline" element={<Navigate to="/live" replace />} />
-              <Route path="/leaderboard" element={<Leaderboard />} />
+              {/* <Route path="/leaderboard" element={<Leaderboard />} /> */}
+              <Route path="/leaderboard" element={<Navigate to="/" replace />} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/discussions" element={<Discussions />} />
               <Route path="/discussions/:id" element={<DiscussionDetail />} />

@@ -459,7 +459,7 @@ function LeaderboardPreview() {
           </AnimatedCard>
 
           <div className="text-center mt-6">
-            <Link to="/leaderboard">
+            {/* <Link to="/leaderboard">
               <GlowButton
                 variant="secondary"
                 className="group px-6 py-2 text-sm h-auto"
@@ -467,7 +467,7 @@ function LeaderboardPreview() {
                 <span>View Full Leaderboard</span>
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </GlowButton>
-            </Link>
+            </Link> */}
           </div>
         </motion.div>
       </div>

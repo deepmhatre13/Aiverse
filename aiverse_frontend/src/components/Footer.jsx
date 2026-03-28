@@ -7,7 +7,7 @@ const footerLinks = {
     { name: 'Courses', href: '/learn' },
     { name: 'Mentor', href: '/mentor' },
     { name: 'Playground', href: '/playground' },
-    { name: 'Leaderboard', href: '/leaderboard' },
+    // { name: 'Leaderboard', href: '/leaderboard' },
   ],
   resources: [
     { name: 'Documentation', href: '#' },

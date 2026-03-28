@@ -800,12 +800,12 @@ export default function LivePerformanceCenter() {
                       <span>Continue Learning</span>
                     </Button>
                   </Link>
-                  <Link to="/leaderboard">
+                  {/* <Link to="/leaderboard">
                     <Button variant="outline" className="w-full h-full py-6 flex flex-col gap-2">
                       <Trophy className="w-6 h-6 text-primary" />
                       <span>View Leaderboard</span>
                     </Button>
-                  </Link>
+                  </Link> */}
                   <Link to="/mentor">
                     <Button variant="outline" className="w-full h-full py-6 flex flex-col gap-2">
                       <Zap className="w-6 h-6 text-primary" />
