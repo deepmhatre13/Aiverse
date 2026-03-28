@@ -14,7 +14,7 @@ function unwrap(body) {
 export const playgroundAPI = {
   getOptions: async () => {
     console.debug('[PlaygroundAPI] getOptions', {
-      hasToken: Boolean(localStorage.getItem('access') || localStorage.getItem('access_token')),
+      hasToken: Boolean(localStorage.getItem('access')),
     });
     const response = await api.get('/api/playground/options/');
     console.debug('[PlaygroundAPI] getOptions response', response.data);

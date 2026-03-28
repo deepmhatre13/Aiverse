@@ -29,7 +29,7 @@ export const mentorAPI = {
   askQuestion: async (sessionId, question) => {
     console.debug('[MentorAPI] askQuestion', {
       sessionId,
-      hasToken: Boolean(localStorage.getItem('access') || localStorage.getItem('access_token')),
+      hasToken: Boolean(localStorage.getItem('access')),
     });
     const res = await api.post(
       `api/mentor/session/${sessionId}/ask/`,
@@ -47,7 +47,7 @@ export const mentorAPI = {
     try {
       console.debug('[MentorAPI] checkTaskStatus', {
         taskId,
-        hasToken: Boolean(localStorage.getItem('access') || localStorage.getItem('access_token')),
+        hasToken: Boolean(localStorage.getItem('access')),
       });
       const res = await api.get(
         `api/mentor/task/${taskId}/status/`

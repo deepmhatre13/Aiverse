@@ -10,7 +10,7 @@ export function AuthProvider({ children }) {
 
   const fetchUser = useCallback(async () => {
     try {
-      const accessToken = localStorage.getItem('access_token');
+      const accessToken = localStorage.getItem('access');
       if (!accessToken) {
         setIsLoading(false);
         return;
@@ -23,8 +23,8 @@ export function AuthProvider({ children }) {
       if (error?.response?.status !== 401) {
         console.error('Failed to fetch user:', error);
       }
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('access');
+      localStorage.removeItem('refresh');
       setUser(null);
       setIsAuthenticated(false);
     } finally {
@@ -44,12 +44,12 @@ export function AuthProvider({ children }) {
       const { tokens, user: userData } = response.data || {};
       
       if (tokens) {
-        localStorage.setItem('access_token', tokens.access);
-        localStorage.setItem('refresh_token', tokens.refresh);
+        localStorage.setItem('access', tokens.access);
+        localStorage.setItem('refresh', tokens.refresh);
       } else if (response.data) {
         // Fallback for different response structure
-        localStorage.setItem('access_token', response.data.access);
-        localStorage.setItem('refresh_token', response.data.refresh);
+        localStorage.setItem('access', response.data.access);
+        localStorage.setItem('refresh', response.data.refresh);
       }
       
       // Fetch full user data
@@ -88,12 +88,12 @@ export function AuthProvider({ children }) {
       const { tokens, user: newUser } = response.data || {};
       
       if (tokens) {
-        localStorage.setItem('access_token', tokens.access);
-        localStorage.setItem('refresh_token', tokens.refresh);
+        localStorage.setItem('access', tokens.access);
+        localStorage.setItem('refresh', tokens.refresh);
       } else if (response.data) {
         // Fallback for different response structure
-        localStorage.setItem('access_token', response.data.access);
-        localStorage.setItem('refresh_token', response.data.refresh);
+        localStorage.setItem('access', response.data.access);
+        localStorage.setItem('refresh', response.data.refresh);
       }
       
       // Fetch full user data
@@ -117,13 +117,14 @@ export function AuthProvider({ children }) {
     try {
       // Backend endpoint: /api/auth/google/ with field name 'credential'
       const response = await api.post('/api/auth/google/', { credential: idToken });
+      console.log('Response:', response.data);
       
       // Backend returns: { access, refresh, user }
       const { access, refresh, user: userData } = response.data || {};
       
       if (access && refresh) {
-        localStorage.setItem('access_token', access);
-        localStorage.setItem('refresh_token', refresh);
+        localStorage.setItem('access', access);
+        localStorage.setItem('refresh', refresh);
       } else {
         throw new Error('Invalid response: missing tokens');
       }
@@ -137,8 +138,8 @@ export function AuthProvider({ children }) {
       return response.data;
     } catch (error) {
       // Clear any partial state on error
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('access');
+      localStorage.removeItem('refresh');
       setUser(null);
       setIsAuthenticated(false);
       setIsLoading(false);
@@ -147,8 +148,8 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('access');
+    localStorage.removeItem('refresh');
     setUser(null);
     setIsAuthenticated(false);
   };

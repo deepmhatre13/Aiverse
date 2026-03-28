@@ -144,9 +144,9 @@ CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_RESULT_EXPIRES = 60 * 60 * 24
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [
+    "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ],
+    ),
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
     ],
@@ -179,6 +179,12 @@ else:
         raise ImproperlyConfigured("CORS_ALLOWED_ORIGINS must be set in production")
     if not CSRF_TRUSTED_ORIGINS:
         raise ImproperlyConfigured("CSRF_TRUSTED_ORIGINS must be set in production")
+
+PRODUCTION_FRONTEND_ORIGIN = "https://aiverse-pink.vercel.app"
+if PRODUCTION_FRONTEND_ORIGIN not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append(PRODUCTION_FRONTEND_ORIGIN)
+if PRODUCTION_FRONTEND_ORIGIN not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(PRODUCTION_FRONTEND_ORIGIN)
 
 CORS_ALLOW_CREDENTIALS = True
 

@@ -13,6 +13,8 @@ from urllib import parse, request
 import json
 import uuid
 from django.db import DatabaseError, IntegrityError
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 
 from .serializers import (
     UserPublicSerializer, UserProfileSerializer,
@@ -97,6 +99,7 @@ class GoogleLoginView(APIView):
 
     def post(self, request):
         """Authenticate user via Google id_token/code and return JWT tokens."""
+        print(request.user)
         id_token = request.data.get('id_token') or request.data.get('credential')
         auth_code = request.data.get('code')
 
@@ -131,8 +134,11 @@ class GoogleLoginView(APIView):
             )
 
         try:
-            tokeninfo_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={parse.quote(id_token)}"
-            tokeninfo = _google_json_request(tokeninfo_url)
+            tokeninfo = google_id_token.verify_oauth2_token(
+                id_token,
+                google_requests.Request(),
+                settings.GOOGLE_OAUTH_CLIENT_ID,
+            )
         except Exception:
             return Response({'error': 'Invalid Google token'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -145,7 +151,8 @@ class GoogleLoginView(APIView):
             )
 
         email = (tokeninfo.get('email') or '').strip().lower()
-        email_verified = str(tokeninfo.get('email_verified', '')).lower() == 'true'
+        email_verified_raw = tokeninfo.get('email_verified', False)
+        email_verified = bool(email_verified_raw) if isinstance(email_verified_raw, bool) else str(email_verified_raw).lower() == 'true'
 
         if not email:
             return Response({'error': 'Google account email not available'}, status=status.HTTP_400_BAD_REQUEST)

@@ -169,6 +169,7 @@ def ask_mentor(request, session_id):
     
     Frontend polls /task/{task_id}/status/ until completion.
     """
+    print(request.user)
     # Ownership check
     session = get_object_or_404(MentorSession, id=session_id, user=request.user)
     
@@ -195,6 +196,7 @@ def ask_mentor(request, session_id):
         # Enqueue Celery task (fire and forget)
         try:
             task = process_mentor_query.delay(str(session_id), question)
+            print("Task created:", task.id)
             logger.info(f"[Mentor] Task {task.id} enqueued for session {session_id}")
         except Exception as celery_err:
             logger.error(f"[Mentor] Celery enqueue failed: {celery_err}", exc_info=True)
@@ -233,6 +235,7 @@ def ask_mentor_v2(request, session_id):
     
     Frontend polls /task/{task_id}/status/ until completion.
     """
+    print(request.user)
     # Ownership check
     session = get_object_or_404(MentorSession, id=session_id, user=request.user)
     
@@ -266,6 +269,7 @@ def ask_mentor_v2(request, session_id):
         # Enqueue Celery task (fire and forget)
         try:
             task = process_mentor_query.delay(str(session_id), question)
+            print("Task created:", task.id)
             logger.info(f"[Mentor] Task {task.id} enqueued for session {session_id}")
         except Exception as celery_err:
             logger.error(f"[Mentor] Celery enqueue failed: {celery_err}", exc_info=True)
@@ -319,6 +323,7 @@ def check_task_status(request, task_id):
     - REVOKED: Task was cancelled
     """
     try:
+        print("Task status checked")
         logger.info("[Mentor] status request.user=%s", request.user)
         logger.info(
             "[Mentor] check_task_status user=%s authenticated=%s task=%s",

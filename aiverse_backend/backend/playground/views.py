@@ -241,6 +241,7 @@ class PlaygroundCompatJobsView(APIView):
         return envelope(True, [_compat_job_payload(exp) for exp in jobs])
 
     def post(self, request):
+        print(request.user)
         auth_error = _ensure_auth(request)
         if auth_error:
             return auth_error
@@ -294,6 +295,7 @@ class PlaygroundCompatJobsView(APIView):
 
         # Non-blocking: enqueue Celery job
         task = run_training_task.delay(exp.id)
+        print("Task created:", task.id)
         payload = _compat_job_payload(exp)
         payload["task_id"] = task.id
         return envelope(True, payload, http_status=status.HTTP_201_CREATED)
@@ -316,6 +318,7 @@ class PlaygroundCompatJobStatusView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, experiment_id: int):
+        print("Task status checked")
         auth_error = _ensure_auth(request)
         if auth_error:
             return auth_error

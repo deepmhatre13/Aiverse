@@ -9,7 +9,7 @@ from .llm import generate_mentor_response, build_full_prompt
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, max_retries=0, acks_late=True, time_limit=30)
+@shared_task(name='mentor.run_mentor_task', bind=True, max_retries=0, acks_late=True, time_limit=30)
 def process_mentor_query(self, session_id, question, problem_context=None, last_score=None):
     """
     Async Celery task: Process mentor query via Google Gemini 2.5 Flash.

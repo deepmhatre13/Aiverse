@@ -7,17 +7,15 @@ const BASE_API_URL =
   import.meta.env.VITE_BASE_API_URL ||
   'http://127.0.0.1:8000';
 
-const getAccessToken = () => localStorage.getItem('access') || localStorage.getItem('access_token');
-const getRefreshToken = () => localStorage.getItem('refresh') || localStorage.getItem('refresh_token');
+const getAccessToken = () => localStorage.getItem('access');
+const getRefreshToken = () => localStorage.getItem('refresh');
 
 const setAccessToken = (token) => {
   localStorage.setItem('access', token);
-  localStorage.setItem('access_token', token);
 };
 
 const setRefreshToken = (token) => {
   localStorage.setItem('refresh', token);
-  localStorage.setItem('refresh_token', token);
 };
 
 const api = axios.create({
@@ -28,6 +26,7 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const token = getAccessToken();
+  console.log('Token:', token);
   console.debug('[API][request]', {
     method: config.method,
     url: config.url,
@@ -41,6 +40,7 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => {
+    console.log('Response:', response.data);
     console.debug('[API][response]', {
       method: response.config?.method,
       url: response.config?.url,
@@ -79,7 +79,8 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${res.data.access}`;
         return api(originalRequest);
       } catch {
-        localStorage.clear();
+        localStorage.removeItem('access');
+        localStorage.removeItem('refresh');
         window.location.href = '/login';
       }
     }
