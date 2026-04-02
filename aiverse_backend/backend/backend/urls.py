@@ -32,6 +32,7 @@ urlpatterns = [
     path('api/live/', include('live.urls')),
     path('api/problems/', include('problems.urls')),
     path('api/submissions/', include('submissions.urls')),
+    path('api/intelligence/', include('intelligence.urls')),
 ]
 
 

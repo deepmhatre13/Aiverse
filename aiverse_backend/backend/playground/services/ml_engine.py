@@ -186,6 +186,29 @@ def run_training(experiment_id: int):
             exp.error = None
             exp.save(update_fields=["status", "metrics", "error", "updated_at"])
 
+        # Intelligence integration (non-blocking)
+        try:
+            from intelligence.services.tracker import log_playground_run
+            from intelligence.services.profile_engine import update_user_profile
+            from intelligence.services.suggestion_engine import generate_suggestions
+            from utils.cache import cache_bust
+
+            log_playground_run(
+                user=exp.user,
+                dataset=exp.dataset.name if exp.dataset else "",
+                model=exp.model_type,
+                hyperparameters=exp.hyperparameters or {},
+                accuracy=metrics.get("accuracy"),
+                loss=metrics.get("loss"),
+                task_type=getattr(exp.dataset, "task_type", "") if exp.dataset else "",
+                extra_metrics={"training_time": metrics.get("training_time")},
+            )
+            update_user_profile(exp.user)
+            generate_suggestions(exp.user)
+            cache_bust(f"intelligence:profile:{exp.user_id}")
+        except Exception:
+            pass
+
         return metrics
 
     except Exception:
@@ -371,6 +394,29 @@ def run_experiment(experiment_id: int):
             exp.metrics = metrics
             exp.error = None
             exp.save(update_fields=['status', 'score', 'metrics', 'error', 'updated_at'])
+
+        # Intelligence integration (non-blocking)
+        try:
+            from intelligence.services.tracker import log_playground_run
+            from intelligence.services.profile_engine import update_user_profile
+            from intelligence.services.suggestion_engine import generate_suggestions
+            from utils.cache import cache_bust
+
+            log_playground_run(
+                user=exp.user,
+                dataset=getattr(exp.dataset, "name", "") if exp.dataset else "",
+                model=exp.model_type,
+                hyperparameters=exp.hyperparameters or {},
+                accuracy=metrics.get("accuracy") if isinstance(metrics, dict) else None,
+                loss=metrics.get("loss") if isinstance(metrics, dict) else None,
+                task_type=getattr(exp, "task_type", "") or getattr(exp.dataset, "task_type", "") if exp.dataset else "",
+                extra_metrics={"f1_score": metrics.get("f1_score")} if isinstance(metrics, dict) else {},
+            )
+            update_user_profile(exp.user)
+            generate_suggestions(exp.user)
+            cache_bust(f"intelligence:profile:{exp.user_id}")
+        except Exception:
+            pass
 
         return {'score': score, 'metrics': metrics}
 

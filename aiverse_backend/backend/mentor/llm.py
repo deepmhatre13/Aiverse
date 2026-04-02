@@ -209,6 +209,96 @@ IMPORTANT CONTEXT RULES:
 --- END PROBLEM CONTEXT ---
 """
 
+USER_INTELLIGENCE_CONTEXT_TEMPLATE = """
+--- USER INTELLIGENCE CONTEXT ---
+Skill level: {skill_level}
+Average score: {avg_score}
+Preferred models: {preferred_models}
+Strengths: {strengths}
+Weaknesses: {weaknesses}
+
+Recent experiment runs (last 3):
+{recent_experiments_summary}
+
+Recent activity (most recent first; may include problems/playground/mentor/learn):
+{recent_activity_summary}
+
+Guidance rules:
+- Bias explanations toward the user's weaknesses and recent failures.
+- Prefer examples aligned with their preferred models when relevant.
+- Keep it actionable: suggest next steps the user can try immediately.
+--- END USER INTELLIGENCE CONTEXT ---
+"""
+
+
+def build_user_intelligence_context_block(user_context: Dict) -> str:
+    if not user_context:
+        return ""
+    skill_level = user_context.get("skill_level") or "unknown"
+    avg_score = user_context.get("avg_score")
+    preferred_models = user_context.get("preferred_models") or []
+    strengths = user_context.get("strengths") or []
+    weaknesses = user_context.get("weaknesses") or []
+    recent = user_context.get("recent_activity") or []
+    recent_runs = user_context.get("recent_experiment_runs") or []
+
+    if avg_score is None:
+        avg_score_text = "unknown"
+    else:
+        try:
+            avg_score_text = f"{float(avg_score):.4f}"
+        except Exception:
+            avg_score_text = str(avg_score)
+
+    run_lines = []
+    for run in recent_runs[:3]:
+        model = run.get("model_type") or "unknown"
+        accuracy = run.get("accuracy")
+        loss = run.get("loss")
+        if accuracy is None:
+            accuracy_text = "n/a"
+        else:
+            try:
+                accuracy_text = f"{float(accuracy):.4f}"
+            except Exception:
+                accuracy_text = str(accuracy)
+        if loss is None:
+            loss_text = "n/a"
+        else:
+            try:
+                loss_text = f"{float(loss):.4f}"
+            except Exception:
+                loss_text = str(loss)
+        run_lines.append(f"- model={model}, accuracy={accuracy_text}, loss={loss_text}")
+    recent_experiments_summary = "\n".join(run_lines) if run_lines else "- (none)"
+
+    # Keep prompt lean: summarize only first 10 items
+    lines = []
+    for row in recent[:10]:
+        a_type = row.get("activity_type")
+        meta = row.get("metadata") or {}
+        if a_type == "problem":
+            lines.append(f"- problem: score={meta.get('score')}")
+        elif a_type == "playground":
+            lines.append(f"- playground: model={meta.get('model_type')} acc={meta.get('accuracy')} loss={meta.get('loss')}")
+        elif a_type == "learn":
+            lines.append(f"- learn: topic={meta.get('topic')}")
+        elif a_type == "mentor":
+            q = (meta.get("query") or "")
+            lines.append(f"- mentor: query={q[:120]}")
+        else:
+            lines.append(f"- {a_type}: {str(meta)[:200]}")
+    recent_activity_summary = "\n".join(lines) if lines else "- (none)"
+
+    return USER_INTELLIGENCE_CONTEXT_TEMPLATE.format(
+        skill_level=skill_level,
+        avg_score=avg_score_text,
+        preferred_models=", ".join([str(m) for m in preferred_models]) if preferred_models else "(none)",
+        strengths=", ".join([str(s) for s in strengths]) if strengths else "(none)",
+        weaknesses=", ".join([str(w) for w in weaknesses]) if weaknesses else "(none)",
+        recent_experiments_summary=recent_experiments_summary,
+        recent_activity_summary=recent_activity_summary,
+    )
 
 SCORE_ANALYSIS_TEMPLATE = """
 --- STUDENT'S LAST SUBMISSION ---
@@ -330,6 +420,7 @@ def build_full_prompt(
     conversation_history: list,
     problem_context: Optional[Dict] = None,
     last_score: Optional[float] = None,
+    user_context: Optional[Dict] = None,
 ) -> str:
     """
     Build the complete prompt with system instruction, optional problem context,
@@ -353,6 +444,13 @@ def build_full_prompt(
     # Inject problem context if available
     if problem_context:
         prompt_parts.append(build_problem_context_block(problem_context))
+
+    # Inject user intelligence context (personalization)
+    if user_context:
+        try:
+            prompt_parts.append(build_user_intelligence_context_block(user_context))
+        except Exception:
+            pass
 
     # Inject score analysis if both score and problem context are available
     if last_score is not None and problem_context:

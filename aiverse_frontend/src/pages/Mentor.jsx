@@ -343,11 +343,15 @@ export default function Mentor() {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const pollingIntervalRef = useRef(null);
   const pollCountRef = useRef(0);
+  const isPollingRef = useRef(false);
+  const loadingChatIdRef = useRef(null);
+  const messageFetchRequestIdRef = useRef(0);
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const textareaRef = useRef(null);
@@ -381,6 +385,35 @@ export default function Mentor() {
     if (!loadingMessages && !isPolling) textareaRef.current?.focus();
   }, [activeSessionId, loadingMessages, isPolling]);
 
+  const fetchMessages = useCallback(async (sessionId) => {
+    if (!sessionId) return;
+    if (loadingChatIdRef.current === sessionId) return;
+
+    loadingChatIdRef.current = sessionId;
+    const requestId = ++messageFetchRequestIdRef.current;
+
+    try {
+      setLoadingMessages(true);
+      const res = await mentorAPI.getMessages(sessionId);
+      if (messageFetchRequestIdRef.current === requestId) {
+        setMessages(res.data || []);
+      }
+    } catch (err) {
+      console.error('[Mentor] Failed to load messages:', err);
+      if (messageFetchRequestIdRef.current === requestId) {
+        setMessages([]);
+        toast.error('Failed to load conversation');
+      }
+    } finally {
+      if (loadingChatIdRef.current === sessionId) {
+        loadingChatIdRef.current = null;
+      }
+      if (messageFetchRequestIdRef.current === requestId) {
+        setLoadingMessages(false);
+      }
+    }
+  }, []);
+
   // ── Load sessions ──
 
   useEffect(() => {
@@ -403,28 +436,20 @@ export default function Mentor() {
 
   useEffect(() => {
     if (pollingIntervalRef.current) { clearInterval(pollingIntervalRef.current); pollingIntervalRef.current = null; }
+    isPollingRef.current = false;
     setIsPolling(false);
     pollCountRef.current = 0;
     if (!activeSessionId) { setMessages([]); return; }
 
-    (async () => {
-      try {
-        setLoadingMessages(true);
-        const res = await mentorAPI.getMessages(activeSessionId);
-        setMessages(res.data || []);
-      } catch (err) {
-        console.error('[Mentor] Failed to load messages:', err);
-        toast.error('Failed to load conversation');
-      } finally {
-        setLoadingMessages(false);
-      }
-    })();
-  }, [activeSessionId]);
+    setMessages([]);
+    fetchMessages(activeSessionId);
+  }, [activeSessionId, fetchMessages]);
 
   // ── Cleanup on unmount ──
 
   useEffect(() => () => {
     if (pollingIntervalRef.current) { clearInterval(pollingIntervalRef.current); pollingIntervalRef.current = null; }
+    isPollingRef.current = false;
   }, []);
 
   // ── Create session ──
@@ -432,6 +457,7 @@ export default function Mentor() {
   const createNewSession = async () => {
     try {
       const res = await mentorAPI.createSession();
+      stopPolling();
       setSessions(prev => [res.data, ...prev]);
       setActiveSessionId(res.data.id);
       setMessages([]);
@@ -446,12 +472,15 @@ export default function Mentor() {
 
   const stopPolling = useCallback(() => {
     if (pollingIntervalRef.current) { clearInterval(pollingIntervalRef.current); pollingIntervalRef.current = null; }
+    isPollingRef.current = false;
     setIsPolling(false);
     pollCountRef.current = 0;
   }, []);
 
-  const startPollingTask = useCallback((taskId) => {
+  const startPollingTask = useCallback((taskId, sessionId) => {
+    if (!taskId || !sessionId || isPollingRef.current) return;
     pollCountRef.current = 0;
+    isPollingRef.current = true;
     setIsPolling(true);
 
     const poll = async () => {
@@ -460,8 +489,7 @@ export default function Mentor() {
         if (res.data.status === 'completed') {
           stopPolling();
           try {
-            const msgRes = await mentorAPI.getMessages(activeSessionId);
-            setMessages(msgRes.data || []);
+            await fetchMessages(sessionId);
           } catch { toast.error('Got response but failed to load it'); }
         } else if (res.data.status === 'error') {
           stopPolling();
@@ -478,33 +506,36 @@ export default function Mentor() {
 
     poll();
     pollingIntervalRef.current = setInterval(poll, POLL_INTERVAL_MS);
-  }, [activeSessionId, stopPolling]);
+  }, [fetchMessages, stopPolling]);
 
   // ── Send message ──
 
   const handleSendMessage = useCallback(async (overrideText) => {
     const question = (overrideText || inputValue).trim();
-    if (!question || isPolling) return;
+    if (!question || isPolling || isSending || loadingMessages) return;
 
-    if (!activeSessionId) {
+    let targetSessionId = activeSessionId;
+
+    if (!targetSessionId) {
       try {
         const res = await mentorAPI.createSession();
+        targetSessionId = res.data.id;
         setSessions(prev => [res.data, ...prev]);
-        setActiveSessionId(res.data.id);
-        setTimeout(() => handleSendMessage(question), 100);
-        return;
+        setActiveSessionId(targetSessionId);
+        setMessages([]);
       } catch { toast.error('Failed to create chat session'); return; }
     }
 
     const optimisticId = `tmp-${Date.now()}`;
     setMessages(prev => [...prev, { id: optimisticId, role: 'user', content: question, created_at: new Date().toISOString() }]);
     setInputValue('');
+    setIsSending(true);
 
     try {
-      const res = await mentorAPI.askQuestion(activeSessionId, question);
+      const res = await mentorAPI.askQuestion(targetSessionId, question);
       const taskId = res.data?.task_id;
       if (!taskId) throw new Error('No task_id');
-      startPollingTask(taskId);
+      startPollingTask(taskId, targetSessionId);
     } catch (err) {
       console.error('[Mentor] Send failed:', err);
       setMessages(prev => prev.filter(m => m.id !== optimisticId));
@@ -522,8 +553,10 @@ export default function Mentor() {
         created_at: new Date().toISOString(),
         onRetry: () => handleSendMessage(question),
       }]);
+    } finally {
+      setIsSending(false);
     }
-  }, [inputValue, isPolling, activeSessionId, startPollingTask]);
+  }, [inputValue, isPolling, isSending, loadingMessages, activeSessionId, startPollingTask]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
@@ -587,7 +620,7 @@ export default function Mentor() {
                 <p className="text-[11px] text-muted-foreground/70">No conversations yet</p>
               </div>
             ) : sessions.map((s) => (
-              <SessionItem key={s.id} session={s} isActive={activeSessionId === s.id} onClick={() => { setActiveSessionId(s.id); setSidebarOpen(false); }} />
+              <SessionItem key={s.id} session={s} isActive={activeSessionId === s.id} onClick={() => { setActiveSessionId(s.id); setMessages([]); setSidebarOpen(false); }} />
             ))}
           </div>
         </aside>
@@ -651,7 +684,7 @@ export default function Mentor() {
           <div className="border-t border-border/50 bg-card/95 backdrop-blur-sm">
             <div className="w-full max-w-[900px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
               <div className={`relative rounded-xl border transition-all duration-200 ${
-                isPolling
+                isPolling || loadingMessages
                   ? 'border-border bg-secondary/50 dark:bg-zinc-900/50'
                   : 'border-border dark:border-border/40 bg-secondary dark:bg-zinc-900/70 focus-within:border-primary/30 focus-within:shadow-[0_0_24px_rgba(225,6,0,0.06)]'
               }`}>
@@ -660,17 +693,17 @@ export default function Mentor() {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={isPolling ? 'Waiting for response…' : 'Ask anything about ML…'}
-                  disabled={isPolling}
+                  placeholder={isPolling ? 'Waiting for response…' : loadingMessages ? 'Loading chat…' : 'Ask anything about ML…'}
+                  disabled={isPolling || loadingMessages || isSending}
                   rows={1}
                   className="w-full px-4 py-3 pr-14 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground min-h-[44px] max-h-[160px] disabled:opacity-50"
                 />
                 <button
                   onClick={() => handleSendMessage()}
-                  disabled={isPolling || !inputValue.trim()}
+                  disabled={isPolling || loadingMessages || isSending || !inputValue.trim()}
                   className="absolute right-2 bottom-2 p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                 >
-                  <Send className="w-4 h-4" />
+                  {isSending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </button>
               </div>
               <p className="text-[10px] text-muted-foreground/50 mt-1.5 text-center font-mono">

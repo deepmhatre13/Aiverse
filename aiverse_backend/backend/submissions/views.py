@@ -20,6 +20,7 @@ class SubmitView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        latest_suggestions = []
         serializer = SubmitSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -48,6 +49,20 @@ class SubmitView(APIView):
             error_message=result['error_message'],
         )
 
+        # Intelligence integration (non-blocking)
+        try:
+            from intelligence.services.tracker import log_problem_submission
+            from intelligence.services.profile_engine import update_user_profile
+            from intelligence.services.suggestion_engine import generate_suggestions
+            from utils.cache import cache_bust
+
+            log_problem_submission(request.user, problem_id=problem.id, score=float(submission.score))
+            update_user_profile(request.user)
+            latest_suggestions = generate_suggestions(request.user)
+            cache_bust(f"intelligence:profile:{request.user.pk}")
+        except Exception:
+            pass
+
         payload = {
             'submission_id': str(submission.id),
             'status': submission.status,
@@ -56,6 +71,7 @@ class SubmitView(APIView):
             'test_results': submission.test_results,
             'execution_time_ms': submission.execution_time_ms,
             'error_message': submission.error_message,
+            'suggestions': latest_suggestions,
         }
 
         cache_set(submission_cache_key(submission.id), payload, ttl=CacheTTL.SUBMISSION)

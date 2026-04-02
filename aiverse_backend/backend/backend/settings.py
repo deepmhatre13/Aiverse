@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "playground",
     "problems",
     "submissions",
+    "intelligence.apps.IntelligenceConfig",
 ]
 
 MIDDLEWARE = [
@@ -138,10 +139,16 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Asia/Kolkata"
+CELERY_TASK_DEFAULT_QUEUE = os.getenv("CELERY_DEFAULT_QUEUE", "default")
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_RESULT_EXPIRES = 60 * 60 * 24
+CELERY_TASK_ROUTES = {
+    "mentor.run_mentor_task": {
+        "queue": CELERY_TASK_DEFAULT_QUEUE,
+    }
+}
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (

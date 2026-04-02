@@ -139,6 +139,37 @@ def get_session_detail(request, session_id):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def get_chat_detail(request, session_id):
+    """
+    GET /api/mentor/chats/{id}/ - Chat detail with messages.
+
+    Returns a stable shape used by chat UIs:
+    {
+      "id": 123,
+      "messages": [...]
+    }
+    """
+    try:
+        session = get_object_or_404(MentorSession, id=session_id, user=request.user)
+        messages = session.messages.all().order_by('created_at')
+        serializer = MentorMessageSerializer(messages, many=True)
+        return Response(
+            {
+                'id': session.id,
+                'messages': serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+    except Exception as e:
+        logger.error(f"[Mentor] Error fetching chat {session_id}: {e}", exc_info=True)
+        return Response(
+            {'error': 'Failed to fetch chat'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_messages(request, session_id):
     """GET /api/mentor/sessions/{id}/messages/ - Fetch all messages in session."""
     session = get_object_or_404(MentorSession, id=session_id, user=request.user)
@@ -179,6 +210,13 @@ def ask_mentor(request, session_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     question = serializer.validated_data['question']
+
+    # Intelligence tracking (non-blocking)
+    try:
+        from intelligence.services.tracker import log_mentor_usage
+        log_mentor_usage(request.user, query=question)
+    except Exception:
+        pass
     
     try:
         # Save user message IMMEDIATELY (optimistic update)
@@ -245,6 +283,13 @@ def ask_mentor_v2(request, session_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     question = serializer.validated_data['question']
+
+    # Intelligence tracking (non-blocking)
+    try:
+        from intelligence.services.tracker import log_mentor_usage
+        log_mentor_usage(request.user, query=question)
+    except Exception:
+        pass
     logger.info("[Mentor] request.user=%s", request.user)
     logger.info(
         "[Mentor] ask_mentor_v2 user=%s authenticated=%s session=%s",

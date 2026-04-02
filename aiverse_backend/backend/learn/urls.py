@@ -70,6 +70,7 @@ from .views import (
     QuizAttemptHistoryView,
     AdminGenerateQuizView,
     LessonAccessCheckView,
+    RecommendedLearningPathView,
     
     # Final quiz views
     CourseQuizView,
@@ -199,6 +200,9 @@ urlpatterns = [
     
     # Quiz attempt history
     path('quiz-attempts/', QuizAttemptHistoryView.as_view(), name='quiz-attempts'),
+
+    # Personalized recommendations
+    path('recommendations/', RecommendedLearningPathView.as_view(), name='recommendations'),
     
     # ===== FINAL COURSE QUIZ =====
     

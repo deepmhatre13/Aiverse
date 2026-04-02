@@ -7,6 +7,7 @@ urlpatterns = [
     # FRONTEND EXPECTED ROUTES (use <int:session_id> for integer ID path conversion)
     path('session/start/', views.start_session, name='start-session'),  # POST: create new session
     path('sessions/', views.get_sessions, name='list-sessions'),  # GET: list sessions
+    path('chats/<int:session_id>/', views.get_chat_detail, name='chat-detail'),  # GET: {id, messages}
     path('session/<int:session_id>/messages/', views.MentorMessageListCreateView.as_view(), name='mentor-message-list-create'),  # GET/POST: messages
     path('session/<int:session_id>/ask/', views.ask_mentor_v2, name='ask-mentor-v2'),  # POST: ask question (singular)
     

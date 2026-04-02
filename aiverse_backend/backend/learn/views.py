@@ -57,6 +57,62 @@ from .tasks import generate_certificate_task, generate_quiz_mcqs_task
 
 logger = logging.getLogger(__name__)
 
+
+WEAKNESS_TO_TOPICS = {
+    "overfitting": ["Regularization", "Cross Validation", "Early Stopping", "Bias-Variance Tradeoff"],
+    "classification": ["Classification Metrics", "Imbalanced Data", "Calibration"],
+    "regression": ["Regression Metrics", "Feature Scaling", "Outliers"],
+    "unknown_task": ["Train/Test Split", "Evaluation Metrics", "Error Analysis"],
+}
+
+DEFAULT_LEARNING_PATH = [
+    "Train/Test Split",
+    "Cross Validation",
+    "Bias-Variance Tradeoff",
+    "Regularization",
+    "Feature Engineering",
+]
+
+
+def _build_learning_path_from_profile(user):
+    if not user or not getattr(user, "is_authenticated", False):
+        return {"recommended_topics": DEFAULT_LEARNING_PATH, "learning_path": DEFAULT_LEARNING_PATH, "weaknesses": [], "preferred_models": []}
+
+    from intelligence.models import UserProfile
+
+    profile = UserProfile.objects.filter(user=user).first()
+    weaknesses = (profile.weaknesses or []) if profile else []
+
+    recommended = []
+    for weakness in weaknesses:
+        key = str(weakness).strip().lower()
+        if key.startswith("model:"):
+            recommended.extend([
+                "Model Selection Basics",
+                "Hyperparameter Tuning",
+                "Cross Validation",
+            ])
+            continue
+        recommended.extend(WEAKNESS_TO_TOPICS.get(key, []))
+
+    if not recommended:
+        recommended = list(DEFAULT_LEARNING_PATH)
+
+    seen = set()
+    ordered_topics = []
+    for topic in recommended:
+        if topic in seen:
+            continue
+        seen.add(topic)
+        ordered_topics.append(topic)
+
+    return {
+        "recommended_topics": ordered_topics[:15],
+        "learning_path": ordered_topics[:10],
+        "weaknesses": weaknesses,
+        "preferred_models": (profile.preferred_models or []) if profile else [],
+    }
+
 # Configure Stripe (optional when Razorpay is used)
 if getattr(settings, 'STRIPE_SECRET_KEY', ''):
     stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -159,7 +215,14 @@ class CourseListView(APIView):
             context={'request': request}
         )
         
-        return paginator.get_paginated_response(serializer.data)
+        response = paginator.get_paginated_response(serializer.data)
+        try:
+            learning_path = _build_learning_path_from_profile(request.user)
+            response.data['learning_path'] = learning_path.get('learning_path', [])
+            response.data['recommended_topics'] = learning_path.get('recommended_topics', [])
+        except Exception:
+            pass
+        return response
 
 
 class FreeCourseListView(APIView):
@@ -370,6 +433,14 @@ class LessonDetailView(APIView):
         
         serializer = LessonDetailSerializer(lesson, context={'request': request})
         
+        # Intelligence tracking (non-blocking)
+        try:
+            from intelligence.services.tracker import log_learn_access
+            topic = getattr(lesson, "topic", "") or getattr(course, "slug", "")
+            log_learn_access(request.user, topic=topic)
+        except Exception:
+            pass
+
         return Response({
             'lesson': serializer.data,
             'course': {
@@ -378,6 +449,19 @@ class LessonDetailView(APIView):
                 'slug': course.slug,
             }
         }, status=status.HTTP_200_OK)
+
+
+class RecommendedLearningPathView(APIView):
+    """
+    Personalized Learn recommendations based on intelligence profile weaknesses.
+
+    GET /api/learn/recommendations/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(_build_learning_path_from_profile(request.user), status=status.HTTP_200_OK)
 
 
 class LessonProgressView(APIView):

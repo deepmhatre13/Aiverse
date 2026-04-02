@@ -35,11 +35,24 @@ def _experiment_for_user(user, experiment_id: int):
     return Experiment.objects.select_related('dataset').filter(pk=experiment_id, user=user).first()
 
 
-def _compat_job_payload(exp: Experiment):
+def _latest_user_suggestions(user, limit: int = 5):
+    try:
+        from intelligence.models import SuggestionLog
+
+        return list(
+            SuggestionLog.objects.filter(user=user)
+            .order_by("-created_at")
+            .values("suggestion_type", "message", "context", "created_at")[:limit]
+        )
+    except Exception:
+        return []
+
+
+def _compat_job_payload(exp: Experiment, include_suggestions: bool = False):
     # Current frontend expects these keys
     metrics = exp.metrics or {}
     logs = list(exp.training_logs.all().order_by("epoch").values("epoch", "loss", "accuracy")[:500])
-    return {
+    payload = {
         "id": exp.id,
         "status": "training" if exp.status == Experiment.STATUS_RUNNING else "completed" if exp.status == Experiment.STATUS_COMPLETED else "failed" if exp.status == Experiment.STATUS_FAILED else "created",
         "dataset_type": str(exp.dataset_id),
@@ -55,6 +68,9 @@ def _compat_job_payload(exp: Experiment):
         "updated_at": exp.updated_at.isoformat(),
         "metrics": logs,
     }
+    if include_suggestions and exp.status == Experiment.STATUS_COMPLETED:
+        payload["suggestions"] = _latest_user_suggestions(exp.user, limit=5)
+    return payload
 
 class DatasetListView(APIView):
     permission_classes = [AllowAny]
@@ -311,7 +327,7 @@ class PlaygroundCompatJobDetailView(APIView):
         exp = _experiment_for_user(request.user, experiment_id)
         if not exp:
             return envelope(False, error='experiment not found', http_status=status.HTTP_404_NOT_FOUND)
-        return envelope(True, _compat_job_payload(exp))
+        return envelope(True, _compat_job_payload(exp, include_suggestions=True))
 
 
 class PlaygroundCompatJobStatusView(APIView):
@@ -325,7 +341,7 @@ class PlaygroundCompatJobStatusView(APIView):
         exp = _experiment_for_user(request.user, experiment_id)
         if not exp:
             return envelope(False, error='experiment not found', http_status=status.HTTP_404_NOT_FOUND)
-        return envelope(True, _compat_job_payload(exp))
+        return envelope(True, _compat_job_payload(exp, include_suggestions=True))
 
 
 class PlaygroundCompatJobMetricsView(APIView):

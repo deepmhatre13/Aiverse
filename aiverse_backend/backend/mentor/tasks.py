@@ -72,10 +72,39 @@ def process_mentor_query(self, session_id, question, problem_context=None, last_
         has_problem = problem_context is not None
         has_score = last_score is not None
 
+        # Intelligence personalization: profile + recent activity (non-blocking)
+        user_context = None
+        try:
+            from intelligence.models import ExperimentRun, UserActivity, UserProfile
+
+            profile = UserProfile.objects.filter(user=session.user).first()
+            recent = list(
+                UserActivity.objects.filter(user=session.user)
+                .order_by("-created_at")
+                .values("activity_type", "reference_id", "metadata", "created_at")[:10]
+            )
+            recent_runs = list(
+                ExperimentRun.objects.filter(user=session.user)
+                .order_by("-created_at")
+                .values("model_type", "accuracy", "loss", "dataset_name", "created_at")[:3]
+            )
+            user_context = {
+                "skill_level": getattr(profile, "skill_level", None),
+                "avg_score": getattr(profile, "avg_score", None),
+                "strengths": getattr(profile, "strengths", []) if profile else [],
+                "weaknesses": getattr(profile, "weaknesses", []) if profile else [],
+                "preferred_models": getattr(profile, "preferred_models", []) if profile else [],
+                "recent_experiment_runs": recent_runs,
+                "recent_activity": recent,
+            }
+        except Exception:
+            user_context = None
+
         prompt = build_full_prompt(
             conversation_history=history_messages,
             problem_context=problem_context,
             last_score=last_score,
+            user_context=user_context,
         )
 
         logger.debug(
