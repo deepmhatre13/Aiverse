@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model, authenticate
 from django.db import transaction
 from rest_framework import status, generics
+from rest_framework import serializers as drf_serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -12,6 +13,7 @@ from django.conf import settings
 from urllib import parse, request
 import json
 import uuid
+import logging
 from django.db import DatabaseError, IntegrityError
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
@@ -32,6 +34,7 @@ from utils.cache import (
 from ml.models import Submission
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 def _google_json_request(url, payload=None):
@@ -99,7 +102,6 @@ class GoogleLoginView(APIView):
 
     def post(self, request):
         """Authenticate user via Google id_token/code and return JWT tokens."""
-        print(request.user)
         id_token = request.data.get('id_token') or request.data.get('credential')
         auth_code = request.data.get('code')
 
@@ -212,22 +214,44 @@ class RegisterView(APIView):
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            refresh = RefreshToken.for_user(user)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            with transaction.atomic():
+                user = serializer.save()
+        except drf_serializers.ValidationError as exc:
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
+        except IntegrityError:
             return Response(
-                {
+                {'error': 'Registration conflict. Try a different email or username.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except DatabaseError:
+            logger.exception('Database error while creating user account.')
+            return Response(
+                {'error': 'Registration service is temporarily unavailable.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception:
+            logger.exception('Unhandled exception during manual registration.')
+            return Response(
+                {'error': 'Unable to register user at this time.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        refresh = RefreshToken.for_user(user)
+        return Response(
+            {
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'user': UserProfileSerializer(user).data,
+                'tokens': {
                     'access': str(refresh.access_token),
                     'refresh': str(refresh),
-                    'user': UserProfileSerializer(user).data,
-                    'tokens': {
-                        'access': str(refresh.access_token),
-                        'refresh': str(refresh),
-                    },
                 },
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class LoginView(APIView):
