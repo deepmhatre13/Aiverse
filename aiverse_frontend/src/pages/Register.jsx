@@ -7,6 +7,34 @@ import { Label } from '../components/ui/label';
 import { Eye, EyeOff, Mail, Lock, User, Loader2, AlertCircle, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
+function extractApiError(errorData, fallback = 'Registration failed') {
+  if (!errorData) return fallback;
+  if (typeof errorData === 'string') return errorData;
+
+  const preferredKeys = [
+    'email',
+    'password',
+    'full_name',
+    'username',
+    'non_field_errors',
+    'message',
+    'detail',
+  ];
+
+  for (const key of preferredKeys) {
+    const value = errorData[key];
+    if (!value) continue;
+    if (Array.isArray(value)) return value[0] || fallback;
+    if (typeof value === 'string') return value;
+  }
+
+  const firstField = Object.values(errorData).find(Boolean);
+  if (Array.isArray(firstField)) return firstField[0] || fallback;
+  if (typeof firstField === 'string') return firstField;
+
+  return fallback;
+}
+
 export default function Register() {
   const [formData, setFormData] = useState({
     name: '',
@@ -58,29 +86,7 @@ export default function Register() {
       toast.success('Account created successfully!');
       navigate('/dashboard');
     } catch (err) {
-      // Extract backend error messages
-      let errorMessage = 'Registration failed';
-      
-      if (err.response?.data) {
-        const errorData = err.response.data;
-        
-        // Handle serializer errors (field-specific)
-        if (errorData.email) {
-          errorMessage = Array.isArray(errorData.email) ? errorData.email[0] : errorData.email;
-        } else if (errorData.password) {
-          errorMessage = Array.isArray(errorData.password) ? errorData.password[0] : errorData.password;
-        } else if (errorData.full_name) {
-          errorMessage = Array.isArray(errorData.full_name) ? errorData.full_name[0] : errorData.full_name;
-        } else if (errorData.non_field_errors) {
-          errorMessage = Array.isArray(errorData.non_field_errors) ? errorData.non_field_errors[0] : errorData.non_field_errors;
-        } else if (errorData.message) {
-          errorMessage = errorData.message;
-        } else if (errorData.detail) {
-          errorMessage = errorData.detail;
-        } else if (typeof errorData === 'string') {
-          errorMessage = errorData;
-        }
-      }
+      const errorMessage = extractApiError(err.response?.data, 'Registration failed');
       
       console.error('Registration error:', err.response?.data || err);
       setError(errorMessage);
@@ -144,23 +150,7 @@ export default function Register() {
               toast.success('Account created successfully!');
               navigate('/dashboard');
             } catch (err) {
-              // Extract backend error messages
-              let errorMessage = 'Google sign-up failed';
-              
-              if (err.response?.data) {
-                const errorData = err.response.data;
-                if (errorData.message) {
-                  errorMessage = errorData.message;
-                } else if (errorData.detail) {
-                  errorMessage = errorData.detail;
-                } else if (errorData.non_field_errors) {
-                  errorMessage = Array.isArray(errorData.non_field_errors) 
-                    ? errorData.non_field_errors[0] 
-                    : errorData.non_field_errors;
-                } else if (typeof errorData === 'string') {
-                  errorMessage = errorData;
-                }
-              }
+              const errorMessage = extractApiError(err.response?.data, 'Google sign-up failed');
               
               console.error('Google login error:', err.response?.data || err);
               setError(errorMessage);

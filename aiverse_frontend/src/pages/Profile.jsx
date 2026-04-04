@@ -22,7 +22,6 @@ import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Button } from '../components/ui/button';
 
-const DEFAULT_SKILLS = ['Python', 'Django', 'React', 'Machine Learning', 'SQL'];
 const EMPTY_PROJECT = { title: '', description: '', tech_stack_csv: '', github_url: '' };
 
 function toRelativeTime(dateValue) {
@@ -115,7 +114,7 @@ function BioSection({ bio }) {
       <h2 className="text-lg font-semibold text-foreground">Bio</h2>
       <Card className="bg-card border border-border/70 rounded-xl">
         <CardContent className="p-4 text-sm md:text-base text-muted-foreground">
-          {bio || 'Focused on building real-time ML systems and scalable backend architectures.'}
+          {bio || ''}
         </CardContent>
       </Card>
     </motion.section>
@@ -323,11 +322,7 @@ export default function Profile() {
   });
 
   const user = useMemo(() => {
-    const merged = { ...(profileData || authUser || {}) };
-    if (!Array.isArray(merged.skills) || merged.skills.length === 0) {
-      merged.skills = DEFAULT_SKILLS;
-    }
-    return merged;
+    return { ...(profileData || authUser || {}) };
   }, [profileData, authUser]);
 
   if (isLoading) {

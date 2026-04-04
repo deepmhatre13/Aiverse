@@ -41,7 +41,7 @@ export default function ProfileHeader({ profile, onEdit }) {
                 {profile?.full_name || profile?.display_name || profile?.username || 'Developer'}
               </h1>
               <p className="text-sm md:text-base text-muted-foreground max-w-2xl truncate">
-                {profile?.tagline || 'ML Engineer | Problem Solver | Backend Systems'}
+                {profile?.tagline || ''}
               </p>
               <div className="grid gap-1 text-xs md:text-sm text-muted-foreground">
                 <div className="flex items-center gap-2 min-w-0">
