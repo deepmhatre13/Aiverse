@@ -113,11 +113,39 @@ def process_mentor_query(self, session_id, question, problem_context=None, last_
             f"problem_aware={has_problem}, has_score={has_score})"
         )
 
-        # STEP 4: Call Gemini API
-        # generate_mentor_response handles all network errors gracefully
-        # Returns (response_text, latency_ms) - never raises exceptions
-        assistant_response, gemini_latency_ms = generate_mentor_response(prompt)
-        logger.info(f"[MentorTask] Gemini responded ({gemini_latency_ms}ms, {len(assistant_response)} chars)")
+        # STEP 4: Call Agentic Mentor System (with fallback to direct Gemini call)
+        assistant_response = None
+        gemini_latency_ms = 0
+        try:
+            import asyncio
+            from aiverse_agentic_mentor.api.router import get_mentor_router
+            from aiverse_agentic_mentor.api.schemas import MentorRequest
+
+            router = get_mentor_router()
+            req = MentorRequest(
+                query=question,
+                session_id=str(session_id),
+                user_id=str(session.user.id),
+                page_context=problem_context or {},
+            )
+            # Run async agentic graph call synchronously in Celery worker thread
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            mentor_res = loop.run_until_complete(router.ask(req))
+            if mentor_res and mentor_res.response:
+                assistant_response = mentor_res.response
+                gemini_latency_ms = mentor_res.latency_ms
+                logger.info(f"[MentorTask] Agentic Mentor responded via agent {mentor_res.agent_used} ({gemini_latency_ms}ms)")
+        except Exception as agent_err:
+            logger.warning(f"[MentorTask] Agentic Mentor call failed ({agent_err}), falling back to direct Gemini call.")
+
+        if not assistant_response:
+            assistant_response, gemini_latency_ms = generate_mentor_response(prompt)
+            logger.info(f"[MentorTask] Gemini fallback responded ({gemini_latency_ms}ms, {len(assistant_response)} chars)")
 
         # STEP 5: Save assistant message INSIDE explicit transaction
         # Use atomic() to ensure both the message save AND session update succeed together

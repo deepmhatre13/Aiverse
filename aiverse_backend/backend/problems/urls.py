@@ -3,5 +3,6 @@ from . import views
 
 urlpatterns = [
     path('', views.ProblemListView.as_view(), name='problem-list'),
+    path('internal/problem-responses/', views.ProblemResponsesInternalView.as_view(), name='problem-responses-internal'),
     path('<slug:slug>/', views.ProblemDetailView.as_view(), name='problem-detail'),
 ]

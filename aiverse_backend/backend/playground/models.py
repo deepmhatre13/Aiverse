@@ -60,12 +60,24 @@ class Experiment(models.Model):
     metrics = models.JSONField(default=dict)
     logs = models.JSONField(default=list)  # free-form event logs (errors, warnings, timestamps)
     error = models.TextField(null=True, blank=True)  # traceback on failure
+    # Extended experiment metadata (PlaygroundExperiment spec)
+    dataset_name = models.CharField(max_length=100, blank=True)
+    algorithm = models.CharField(max_length=100, blank=True)
+    preprocessing_config = models.JSONField(default=dict)
+    results = models.JSONField(default=dict)
+    concept_tag = models.CharField(max_length=50, blank=True)
+    notes = models.TextField(blank=True)
+    tags = models.JSONField(default=list)
+    run_time_seconds = models.FloatField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'playground_experiments'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+        ]
 
     def __str__(self):
         return f"Experiment {self.pk} ({self.status})"

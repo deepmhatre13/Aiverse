@@ -33,6 +33,9 @@ class MentorMessage(models.Model):
         help_text="Must be 'user' or 'assistant' (lowercase)"
     )
     content = models.TextField(help_text="Full message text. For assistant, may contain JSON structure or plain text.")
+    concept_tag = models.CharField(max_length=50, blank=True, null=True, help_text="Primary concept tag of this message")
+    agent_used = models.CharField(max_length=50, blank=True, null=True, help_text="Agent that generated response")
+    faithfulness_score = models.FloatField(null=True, blank=True, help_text="RAGAS faithfulness score (0.0 - 1.0)")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
@@ -44,3 +47,20 @@ class MentorMessage(models.Model):
 
     def __str__(self):
         return f"{self.role}: {self.content[:50]}"
+
+
+class MentorMemoryBlob(models.Model):
+    """PostgreSQL durable write-through store for long-term memory blobs beyond Redis TTL."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='mentor_memory_blobs')
+    memory_type = models.CharField(max_length=50, db_index=True)
+    payload = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('user', 'memory_type')
+        indexes = [
+            models.Index(fields=['user', 'memory_type']),
+        ]
+
+    def __str__(self):
+        return f"MemoryBlob({self.user_id}, {self.memory_type})"

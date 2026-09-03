@@ -3,6 +3,7 @@ import axios from 'axios';
 // Default to http://127.0.0.1:8000 (WITHOUT /api suffix)
 // Paths must include /api prefix for routing
 const BASE_API_URL =
+  import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_BASE_API_URL ||
   'http://127.0.0.1:8000';
@@ -22,16 +23,11 @@ const api = axios.create({
   baseURL: BASE_API_URL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 60000, // 60s for Mentor/ML model calls
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
   const token = getAccessToken();
-  console.log('Token:', token);
-  console.debug('[API][request]', {
-    method: config.method,
-    url: config.url,
-    hasToken: Boolean(token),
-  });
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -39,15 +35,7 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => {
-    console.log('Response:', response.data);
-    console.debug('[API][response]', {
-      method: response.config?.method,
-      url: response.config?.url,
-      status: response.status,
-    });
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
     console.debug('[API][error]', {

@@ -11,7 +11,17 @@ import {
   LabContentTransition,
   PlaygroundParticleGrid,
 } from '../components/playground';
+import ExperimentHistoryTab from '../components/playground/ExperimentHistoryTab';
+import GuidedExperimentsTab from '../components/playground/GuidedExperimentsTab';
 import { GlowButton } from '@/design-system';
+
+const PLAYGROUND_TABS = [
+  { id: 'lab', label: 'Experiment Lab' },
+  { id: 'history', label: 'History' },
+  { id: 'features', label: 'Feature Analysis' },
+  { id: 'compare', label: 'Model Comparison' },
+  { id: 'guided', label: 'Guided Experiments' },
+];
 
 const STEP_ORDER = ['dataset', 'model', 'hyperparams', 'train'];
 
@@ -580,6 +590,7 @@ function CompletionScreen({ job, metrics }) {
 }
 
 export default function Playground() {
+  const [activeTab, setActiveTab] = useState('lab');
   const [phase, setPhase] = useState('initial');
   const [config, setConfig] = useState({
     dataset: null,
@@ -714,6 +725,42 @@ export default function Playground() {
   return (
     <Layout>
       <div className="min-h-screen bg-background">
+        <div className="sticky top-16 z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <div className="container mx-auto px-4 flex gap-1 overflow-x-auto py-2">
+            {PLAYGROUND_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {activeTab === 'history' && <ExperimentHistoryTab />}
+        {activeTab === 'guided' && <GuidedExperimentsTab />}
+        {activeTab === 'features' && (
+          <div className="p-12 text-center text-muted-foreground max-w-lg mx-auto">
+            <p className="text-lg font-medium text-foreground mb-2">Feature Analysis</p>
+            <p>Select a dataset to view distributions, correlations, missing values, and PCA variance charts.</p>
+          </div>
+        )}
+        {activeTab === 'compare' && (
+          <div className="p-12 text-center text-muted-foreground max-w-lg mx-auto">
+            <p className="text-lg font-medium text-foreground mb-2">Auto Compare</p>
+            <p>Run LR, DT, RF, XGB, SVM, and KNN on the same dataset and compare accuracy, F1, and train time.</p>
+          </div>
+        )}
+
+        {activeTab === 'lab' && (
+        <>
         <div className="hidden dark:block"><PlaygroundParticleGrid /></div>
         <div
           className="fixed inset-0 pointer-events-none z-[1] hidden dark:block"
@@ -744,6 +791,8 @@ export default function Playground() {
             )
           )}
         </AnimatePresence>
+        </>
+        )}
       </div>
     </Layout>
   );

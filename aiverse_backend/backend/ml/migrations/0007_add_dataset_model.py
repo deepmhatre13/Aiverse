@@ -11,13 +11,18 @@ import django.db.models.deletion
 
 
 def column_exists(table_name, column_name):
-    """Check if a column exists in a table."""
+    """Check if a column exists in a table (database-agnostic).
+
+    Uses Django's introspection API instead of a Postgres-only
+    ``information_schema`` query so the migration also works on SQLite
+    (Django's default test database) and any other supported backend.
+    """
     with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT COUNT(*) FROM information_schema.columns 
-            WHERE table_name = %s AND column_name = %s
-        """, [table_name, column_name])
-        return cursor.fetchone()[0] > 0
+        columns = [
+            col.name
+            for col in connection.introspection.get_table_description(cursor, table_name)
+        ]
+    return column_name in columns
 
 
 def create_default_dataset(apps, schema_editor):

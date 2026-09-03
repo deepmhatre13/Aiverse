@@ -64,6 +64,12 @@ class AskMentorSerializer(serializers.Serializer):
                   "When provided with problem_slug, the mentor analyzes the "
                   "score relative to the threshold and suggests improvements."
     )
+    # Page-context for full zero-repeat context awareness
+    page_context = serializers.DictField(
+        required=False,
+        default=dict,
+        help_text="Optional page context dict (e.g., {'content_type': 'lesson', 'concept_tag': 'gradient_descent'})"
+    )
 
     def validate_question(self, value):
         """Ensure question is non-empty after trimming."""

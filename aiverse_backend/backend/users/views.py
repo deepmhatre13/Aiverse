@@ -102,11 +102,16 @@ class GoogleLoginView(APIView):
 
     def post(self, request):
         """Authenticate user via Google id_token/code and return JWT tokens."""
+        logger.info(f"[GoogleLoginView] POST request received, data keys: {list(request.data.keys())}")
+        
         id_token = request.data.get('id_token') or request.data.get('credential')
         auth_code = request.data.get('code')
+        logger.info(f"[GoogleLoginView] id_token present: {bool(id_token)}, auth_code present: {bool(auth_code)}")
 
         if auth_code and not id_token:
+            logger.info(f"[GoogleLoginView] Attempting to exchange auth_code for id_token")
             if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
+                logger.error(f"[GoogleLoginView] Google OAuth credentials not configured")
                 return Response(
                     {'error': 'Google OAuth client credentials are not configured'},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -123,30 +128,39 @@ class GoogleLoginView(APIView):
                     },
                 )
                 id_token = token_data.get('id_token')
-            except Exception:
+                logger.info(f"[GoogleLoginView] Successfully exchanged auth_code for id_token")
+            except Exception as e:
+                logger.error(f"[GoogleLoginView] Failed to exchange auth_code: {str(e)}")
                 return Response(
                     {'error': 'Failed to exchange Google authorization code'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
         if not id_token:
+            logger.warning(f"[GoogleLoginView] No id_token or credential provided")
             return Response(
                 {'error': 'Missing Google credential (id_token/credential/code)'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        logger.info(f"[GoogleLoginView] Verifying Google id_token, client_id: {settings.GOOGLE_OAUTH_CLIENT_ID}")
         try:
             tokeninfo = google_id_token.verify_oauth2_token(
                 id_token,
                 google_requests.Request(),
                 settings.GOOGLE_OAUTH_CLIENT_ID,
             )
-        except Exception:
+            logger.info(f"[GoogleLoginView] Token verification successful, aud: {tokeninfo.get('aud')}")
+        except Exception as e:
+            logger.error(f"[GoogleLoginView] Token verification failed: {str(e)}")
             return Response({'error': 'Invalid Google token'}, status=status.HTTP_400_BAD_REQUEST)
 
         expected_client_id = getattr(settings, 'GOOGLE_OAUTH_CLIENT_ID', None)
         token_aud = (tokeninfo.get('aud') or '').strip()
+        logger.info(f"[GoogleLoginView] Expected client_id: {expected_client_id}, Token aud: {token_aud}")
+        
         if expected_client_id and token_aud and token_aud != expected_client_id:
+            logger.error(f"[GoogleLoginView] Audience mismatch: {token_aud} != {expected_client_id}")
             return Response(
                 {'error': 'Google token audience mismatch for configured client ID'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -156,43 +170,76 @@ class GoogleLoginView(APIView):
         email_verified_raw = tokeninfo.get('email_verified', False)
         email_verified = bool(email_verified_raw) if isinstance(email_verified_raw, bool) else str(email_verified_raw).lower() == 'true'
 
+        logger.info(f"[GoogleLoginView] Email: {email}, Verified: {email_verified}")
+        
         if not email:
+            logger.error(f"[GoogleLoginView] No email in token")
             return Response({'error': 'Google account email not available'}, status=status.HTTP_400_BAD_REQUEST)
         if not email_verified:
+            logger.error(f"[GoogleLoginView] Email not verified: {email}")
             return Response({'error': 'Google email is not verified'}, status=status.HTTP_400_BAD_REQUEST)
 
         name = (tokeninfo.get('name') or '').strip()[:100]
         picture = (tokeninfo.get('picture') or '').strip()[:200]
+        logger.info(f"[GoogleLoginView] Name: {name}, Picture length: {len(picture)}")
 
         try:
-            user = User.objects.filter(email__iexact=email).first()
-            if user is None:
-                user = User.objects.create(
-                    email=email,
-                    username=_unique_username_from_email(email),
-                    display_name=name or email.split('@')[0],
-                    avatar_url=picture,
-                    auth_method='google',
-                    is_active=True,
-                )
-                user.set_unusable_password()
-                user.save(update_fields=['password'])
-            else:
-                updated_fields = []
-                if user.auth_method != 'google':
-                    user.auth_method = 'google'
-                    updated_fields.append('auth_method')
-                if name and user.display_name != name:
-                    user.display_name = name
-                    updated_fields.append('display_name')
-                if picture and user.avatar_url != picture:
-                    user.avatar_url = picture
-                    updated_fields.append('avatar_url')
-                if updated_fields:
-                    user.save(update_fields=updated_fields)
-        except (IntegrityError, DatabaseError):
+            logger.info(f"[GoogleLoginView] Starting atomic transaction for user creation/update")
+            with transaction.atomic():
+                user = User.objects.filter(email__iexact=email).first()
+                logger.info(f"[GoogleLoginView] User lookup result: {bool(user)}")
+                
+                if user is None:
+                    # Create new user
+                    logger.info(f"[GoogleLoginView] Creating new user with email: {email}")
+                    username = _unique_username_from_email(email)
+                    logger.info(f"[GoogleLoginView] Generated username: {username}")
+                    
+                    user = User.objects.create(
+                        email=email,
+                        username=username,
+                        display_name=name or email.split('@')[0],
+                        avatar_url=picture,
+                        auth_method='google',
+                        is_active=True,
+                    )
+                    user.set_unusable_password()
+                    user.save(update_fields=['password'])
+                    logger.info(f"✅ Created new user from Google OAuth: {email} (id: {user.id})")
+                else:
+                    # Update existing user
+                    logger.info(f"[GoogleLoginView] Updating existing user: {email}")
+                    updated_fields = []
+                    if user.auth_method != 'google':
+                        user.auth_method = 'google'
+                        updated_fields.append('auth_method')
+                    if name and user.display_name != name:
+                        user.display_name = name
+                        updated_fields.append('display_name')
+                    if picture and user.avatar_url != picture:
+                        user.avatar_url = picture
+                        updated_fields.append('avatar_url')
+                    if updated_fields:
+                        user.save(update_fields=updated_fields)
+                        logger.info(f"✅ Updated user from Google OAuth: {email}, fields: {updated_fields}")
+                    else:
+                        logger.info(f"[GoogleLoginView] No fields to update for user: {email}")
+        except IntegrityError as e:
+            logger.error(f"❌ IntegrityError creating/updating user from Google: {str(e)}")
             return Response(
-                {'error': 'Unable to create/update user from Google profile data'},
+                {'error': f'User creation failed: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except DatabaseError as e:
+            logger.error(f"❌ DatabaseError creating/updating user from Google: {str(e)}")
+            return Response(
+                {'error': 'Database error during authentication. Please try again.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception as e:
+            logger.error(f"❌ Unexpected error creating/updating user from Google: {type(e).__name__}: {str(e)}", exc_info=True)
+            return Response(
+                {'error': f'Unable to create/update user: {str(e)}'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

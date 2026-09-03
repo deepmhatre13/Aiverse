@@ -59,6 +59,12 @@ INSTALLED_APPS = [
     "problems",
     "submissions",
     "intelligence.apps.IntelligenceConfig",
+    # NEW - Event tracking and learning analytics
+    "tracking",
+    "learner",
+    "recommendations",
+    "analytics",
+    "notifications",
 ]
 
 MIDDLEWARE = [
@@ -150,6 +156,27 @@ CELERY_TASK_ROUTES = {
     }
 }
 
+# Celery Beat Schedule for recurring tasks
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    'generate-daily-recommendations': {
+        'task': 'tracking.tasks.generate_daily_recommendations_for_all',
+        'schedule': crontab(hour=2, minute=0),
+    },
+    'update-dropout-risk-all-users': {
+        'task': 'tracking.tasks.update_dropout_risk_all_users',
+        'schedule': crontab(hour=2, minute=0),
+    },
+    'recompute-mastery-6h': {
+        'task': 'tracking.tasks.recompute_all_mastery_scores',
+        'schedule': crontab(minute=0, hour='*/6'),
+    },
+    'retrain-ml-models': {
+        'task': 'tracking.tasks.retrain_ml_models_nightly',
+        'schedule': crontab(hour=2, minute=30),
+    },
+}
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -220,7 +247,7 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Cross-Origin policies
-SECURE_CROSS_ORIGIN_OPENER_POLICY = None  # Allow Google OAuth popup communication
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"  # Allow Google OAuth popup communication
 
 default_stripe_mode = "live" if IS_PRODUCTION else "test"
 STRIPE_MODE = os.getenv("STRIPE_MODE", default_stripe_mode).strip().lower()
@@ -244,4 +271,69 @@ else:
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 HF_API_KEY = os.getenv("HF_API_KEY")
+
+# ML recommendation service
+ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://localhost:8001")
+ML_SERVICE_TIMEOUT = float(os.getenv("ML_SERVICE_TIMEOUT", "3.0"))
+ML_INTERNAL_KEY = os.getenv("ML_INTERNAL_KEY", "aiverse_ml_internal_key")
+
+# Google OAuth Configuration
 GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
+GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
+GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
+GOOGLE_OAUTH_REDIRECT_URI = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "")
+
+# ==============================
+# LOGGING CONFIGURATION
+# ==============================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {asctime} {name} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'users': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'recommendations': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'learner': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'tracking': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    }
+}

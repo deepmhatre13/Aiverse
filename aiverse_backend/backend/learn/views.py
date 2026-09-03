@@ -453,7 +453,7 @@ class LessonDetailView(APIView):
 
 class RecommendedLearningPathView(APIView):
     """
-    Personalized Learn recommendations based on intelligence profile weaknesses.
+    Personalized Learn recommendations based on the existing recommendation engine.
 
     GET /api/learn/recommendations/
     """
@@ -461,7 +461,8 @@ class RecommendedLearningPathView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response(_build_learning_path_from_profile(request.user), status=status.HTTP_200_OK)
+        from recommendations.services import build_personalized_learn_response
+        return Response(build_personalized_learn_response(request.user), status=status.HTTP_200_OK)
 
 
 class LessonProgressView(APIView):
@@ -1569,6 +1570,57 @@ class QuizSubmitView(APIView):
         
         # Calculate score
         attempt.calculate_score()
+
+        concept_tag = quiz.concept_tag or lesson.concept_tag or 'python_ml'
+        from learner.models import ConceptMastery
+        from learner.bkt import BKTTracer, DEFAULT_PARAMS
+        from tracking.models import LearnerEvent
+
+        mastery_obj, _ = ConceptMastery.objects.get_or_create(
+            user=request.user,
+            concept_tag=concept_tag,
+            defaults={'quiz_mastery': 0.0},
+        )
+        mastery_before = mastery_obj.mastery_score
+
+        params = DEFAULT_PARAMS.get(concept_tag)
+        if params:
+            tracer = BKTTracer(params)
+            quiz_mastery_after = tracer.update(mastery_obj.quiz_mastery, correct=attempt.passed)
+        else:
+            quiz_mastery_after = min(
+                1.0,
+                mastery_obj.quiz_mastery + (0.08 if attempt.passed else -0.03),
+            )
+
+        mastery_obj.quiz_mastery = quiz_mastery_after
+        mastery_obj.quiz_attempts += 1
+        mastery_obj.recompute_mastery()
+        mastery_after = mastery_obj.mastery_score
+
+        time_taken = request.data.get('time_taken_seconds')
+        event_meta = {
+            'concept_tag': concept_tag,
+            'score': attempt.score,
+            'lesson_id': lesson.id,
+        }
+        LearnerEvent.objects.create(
+            user=request.user,
+            event_type='QUIZ_SUBMITTED',
+            content_type='quiz',
+            content_id=lesson.id,
+            metadata=event_meta,
+        )
+        LearnerEvent.objects.create(
+            user=request.user,
+            event_type='QUIZ_PASSED' if attempt.passed else 'QUIZ_FAILED',
+            content_type='quiz',
+            content_id=lesson.id,
+            metadata=event_meta,
+        )
+        if time_taken:
+            attempt.time_taken_seconds = int(time_taken)
+            attempt.save(update_fields=['time_taken_seconds'])
         
         # Build question results
         questions = quiz.questions.all().order_by('order')
@@ -1627,6 +1679,13 @@ class QuizSubmitView(APIView):
             'user_answers': answers,
             'question_results': question_results,
             'lesson_completed': attempt.passed,
+            'score': attempt.score,
+            'passed': attempt.passed,
+            'correct': attempt.correct_count,
+            'total': attempt.total_questions,
+            'mastery_before': round(mastery_before, 3),
+            'mastery_after': round(mastery_after, 3),
+            'concept_tag': concept_tag,
         }, status=status.HTTP_201_CREATED)
 
 

@@ -28,6 +28,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorState from '../components/ErrorState';
 import api from '../api/axios';
 import { toast } from 'sonner';
+import AfterProblemPanel from '../components/AfterProblemPanel';
 
 // Blank starter code - no model hints, no imports, no solution direction
 // Users must solve problems from scratch like a real competitive coding environment
@@ -642,6 +643,10 @@ export default function ProblemDetail() {
                 <div className="space-y-6">
                   {/* Latest Evaluation Result */}
                   <EvaluationPanel results={results} problem={problem} />
+
+                  {(results?.status === 'accepted' || results?.status === 'success') && (
+                    <AfterProblemPanel problemSlug={slug} />
+                  )}
 
                   {/* Submission History */}
                   <div>

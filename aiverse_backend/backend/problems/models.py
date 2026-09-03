@@ -23,6 +23,7 @@ class Problem(models.Model):
     slug = models.SlugField(unique=True, max_length=255)
     description = models.TextField()
     short_description = models.CharField(max_length=300, blank=True)
+    concept_tag = models.CharField(max_length=50, blank=True, default='', db_index=True)
     difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES, default='Medium')
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
     points = models.IntegerField(default=100)

@@ -7,6 +7,9 @@ import {
 import Layout from '../components/Layout';
 import { Button } from '../components/ui/button';
 import { mentorAPI } from '../api/mentor';
+import { useLearner } from '../contexts/LearnerContext';
+import { useTracker } from '../hooks/useTracker';
+import { Events } from '../api/trackingApi';
 import { toast } from 'sonner';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -356,6 +359,24 @@ export default function Mentor() {
   const scrollContainerRef = useRef(null);
   const textareaRef = useRef(null);
 
+  const { profile } = useLearner();
+  const { track } = useTracker();
+
+  const buildContextualQuestion = useCallback(
+    (userMessage) => {
+      const weakConcepts = profile?.weak_concepts?.join(', ') || 'none identified yet';
+      const skillLevel = profile?.estimated_skill_level || 'beginner';
+      const frustration = profile?.frustration_score || 0;
+      const supportNote =
+        frustration > 0.6
+          ? 'learner is frustrated, be extra supportive'
+          : 'learner is engaged';
+
+      return `[Learner context — skill: ${skillLevel}; weak concepts: ${weakConcepts}; frustration: ${(frustration * 100).toFixed(0)}% (${supportNote}). Give personalized explanations. End with "💡 Suggested: [one lesson or quiz recommendation]".]\n\n${userMessage}`;
+    },
+    [profile]
+  );
+
   // ── Auto-scroll ──
 
   const scrollToBottom = useCallback((behavior = 'smooth') => {
@@ -531,8 +552,11 @@ export default function Mentor() {
     setInputValue('');
     setIsSending(true);
 
+    track(Events.MENTOR_QUERIED, 'mentor', 0, { query: question });
+
     try {
-      const res = await mentorAPI.askQuestion(targetSessionId, question);
+      const contextualQuestion = buildContextualQuestion(question);
+      const res = await mentorAPI.askQuestion(targetSessionId, contextualQuestion);
       const taskId = res.data?.task_id;
       if (!taskId) throw new Error('No task_id');
       startPollingTask(taskId, targetSessionId);
@@ -556,7 +580,7 @@ export default function Mentor() {
     } finally {
       setIsSending(false);
     }
-  }, [inputValue, isPolling, isSending, loadingMessages, activeSessionId, startPollingTask]);
+  }, [inputValue, isPolling, isSending, loadingMessages, activeSessionId, startPollingTask, track, buildContextualQuestion]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
@@ -683,6 +707,19 @@ export default function Mentor() {
           {/* ── Input Area ── */}
           <div className="border-t border-border/50 bg-card/95 backdrop-blur-sm">
             <div className="w-full max-w-[900px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+              {profile?.weak_concepts?.length > 0 && (
+                <div className="px-1 pb-2 flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-muted-foreground">Context:</span>
+                  {profile.weak_concepts.slice(0, 3).map((c) => (
+                    <span
+                      key={c}
+                      className="text-xs px-2 py-0.5 rounded-full bg-[#1a1a1a] border border-[#333] text-gray-500 capitalize"
+                    >
+                      {c.replace(/_/g, ' ')}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className={`relative rounded-xl border transition-all duration-200 ${
                 isPolling || loadingMessages
                   ? 'border-border bg-secondary/50 dark:bg-zinc-900/50'

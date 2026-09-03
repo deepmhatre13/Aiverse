@@ -6,6 +6,12 @@ from users.views import GoogleLoginView
 from users.views import ProfileView, ProfileUpdateView, GitHubConnectView, GitHubDisconnectView, LinkedInConnectView, LinkedInDisconnectView
 from backend.health import HealthCheckView
 from dashboard.views import PerformanceView
+from learn.views_internal import (
+    InternalLessonsCatalogueView,
+    InternalEventsView,
+    InternalProblemsCatalogueView,
+    InternalProblemResponsesView,
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -33,6 +39,16 @@ urlpatterns = [
     path('api/problems/', include('problems.urls')),
     path('api/submissions/', include('submissions.urls')),
     path('api/intelligence/', include('intelligence.urls')),
+    # NEW - Event tracking and intelligence
+    path('api/tracking/', include('tracking.urls')),
+    path('api/learner/', include('learner.urls')),
+    path('api/recommendations/', include('recommendations.urls')),
+    path('api/analytics/', include('analytics.urls')),
+    path('api/notifications/', include('notifications.urls')),
+    path('api/internal/lessons-catalogue/', InternalLessonsCatalogueView.as_view()),
+    path('api/internal/all-events/', InternalEventsView.as_view()),
+    path('api/internal/problems-catalogue/', InternalProblemsCatalogueView.as_view()),
+    path('api/internal/problem-responses/', InternalProblemResponsesView.as_view()),
 ]
 
 

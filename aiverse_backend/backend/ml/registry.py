@@ -1859,6 +1859,14 @@ PROBLEM_REGISTRY = {
 }
 
 
+# Merge extended problems (22 additional → 40 total)
+try:
+    from ml.registry_extended import EXTENDED_PROBLEMS
+    PROBLEM_REGISTRY.update(EXTENDED_PROBLEMS)
+except ImportError:
+    pass
+
+
 def get_problem_definition(slug: str) -> ProblemDefinition:
     """
     Get problem definition by slug.

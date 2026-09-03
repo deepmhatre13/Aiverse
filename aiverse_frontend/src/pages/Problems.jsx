@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Search, Filter, Code, BarChart2, Layers, ChevronRight, Trophy, Zap, Flame, Crown, Star } from 'lucide-react';
 import Layout from '../components/Layout';
 import { Input } from '../components/ui/input';
@@ -8,7 +9,10 @@ import { Badge } from '../components/ui/badge';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorState from '../components/ErrorState';
 import EmptyState from '../components/EmptyState';
+import ReadinessBadge from '../components/ReadinessBadge';
 import api from '../api/axios';
+import { useAuth } from '../contexts/AuthContext';
+import { useLearner } from '../contexts/LearnerContext';
 
 const difficultyConfig = {
   easy: {
@@ -64,7 +68,7 @@ const typeIcons = {
   clustering: Code,
 };
 
-function ProblemCard({ problem }) {
+function ProblemCard({ problem, readiness }) {
   const problemType = problem.problem_type || problem.type;
   const TypeIcon = typeIcons[problemType] || Code;
   const difficulty = problem.difficulty || 'easy';
@@ -93,22 +97,32 @@ function ProblemCard({ problem }) {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {hasConstraints && (
-            <Badge variant="outline" className="text-xs border-primary/30 text-primary">
-              <Zap className="w-3 h-3 mr-1" />
-              Constrained
-            </Badge>
+        <div className="flex flex-col items-end gap-2">
+          {readiness && (
+            <ReadinessBadge
+              readiness={readiness.readiness}
+              label={readiness.label}
+              reason={readiness.reason}
+              compact
+            />
           )}
-          {problem.has_hidden_tests && (
-            <Badge variant="outline" className="text-xs border-primary/30 text-primary dark:text-primary">
-              Hidden Tests
+          <div className="flex items-center gap-2">
+            {hasConstraints && (
+              <Badge variant="outline" className="text-xs border-primary/30 text-primary">
+                <Zap className="w-3 h-3 mr-1" />
+                Constrained
+              </Badge>
+            )}
+            {problem.has_hidden_tests && (
+              <Badge variant="outline" className="text-xs border-primary/30 text-primary dark:text-primary">
+                Hidden Tests
+              </Badge>
+            )}
+            <Badge className={`${config.color} flex items-center gap-1`}>
+              <DiffIcon className="w-3 h-3" />
+              {config.label}
             </Badge>
-          )}
-          <Badge className={`${config.color} flex items-center gap-1`}>
-            <DiffIcon className="w-3 h-3" />
-            {config.label}
-          </Badge>
+          </div>
         </div>
       </div>
 
@@ -137,7 +151,11 @@ function ProblemCard({ problem }) {
 }
 
 export default function Problems() {
+  const { isAuthenticated } = useAuth();
+  const { learnerAbility } = useLearner();
+  const [sortMode, setSortMode] = useState('standard');
   const [problems, setProblems] = useState([]);
+  const [readinessMap, setReadinessMap] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -148,6 +166,32 @@ export default function Problems() {
   useEffect(() => {
     fetchProblems();
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || problems.length === 0) {
+      setReadinessMap({});
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        problems.map(async (p) => {
+          try {
+            const res = await api.get(`/api/learn/problems/${p.slug}/recommended-for-me/`);
+            return [p.slug, res.data];
+          } catch {
+            return [p.slug, null];
+          }
+        })
+      );
+      if (!cancelled) {
+        setReadinessMap(Object.fromEntries(entries.filter(([, v]) => v)));
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [isAuthenticated, problems]);
 
   const fetchProblems = async () => {
     try {
@@ -181,16 +225,43 @@ export default function Problems() {
     return matchesSearch && matchesDifficulty && matchesType && matchesCategory;
   });
 
+  const displayedProblems = useMemo(() => {
+    if (sortMode !== 'adaptive' || learnerAbility === 0) return filteredProblems;
+    return [...filteredProblems].sort((a, b) => {
+      const gapA = Math.abs((a.difficulty_rating || 1000) / 500 - (learnerAbility + 3));
+      const gapB = Math.abs((b.difficulty_rating || 1000) / 500 - (learnerAbility + 3));
+      return gapA - gapB;
+    });
+  }, [filteredProblems, sortMode, learnerAbility]);
+
+  const abilityPct = ((learnerAbility + 3) / 6) * 100;
+  const abilityLabel =
+    learnerAbility > 0.5 ? 'Advanced' : learnerAbility > -0.5 ? 'Intermediate' : 'Beginner';
+
   // Group by difficulty for section display
   const groupedProblems = {
-    easy: filteredProblems.filter(p => p.difficulty === 'easy'),
-    medium: filteredProblems.filter(p => p.difficulty === 'medium'),
-    hard: filteredProblems.filter(p => p.difficulty === 'hard'),
-    expert: filteredProblems.filter(p => p.difficulty === 'expert'),
+    easy: displayedProblems.filter(p => p.difficulty === 'easy'),
+    medium: displayedProblems.filter(p => p.difficulty === 'medium'),
+    hard: displayedProblems.filter(p => p.difficulty === 'hard'),
+    expert: displayedProblems.filter(p => p.difficulty === 'expert'),
   };
 
-  const totalCount = filteredProblems.length;
-  const showGrouped = selectedDifficulty === 'all' && !searchQuery;
+  const totalCount = displayedProblems.length;
+  const showGrouped = selectedDifficulty === 'all' && !searchQuery && sortMode === 'standard';
+
+  const renderProblemCard = (problem, index) => (
+    <motion.div
+      layout
+      key={problem.slug}
+      className={
+        index === 0 && sortMode === 'adaptive'
+          ? 'ring-2 ring-[#E8392A]/40 shadow-[0_0_20px_rgba(232,57,42,0.15)] rounded-xl'
+          : ''
+      }
+    >
+      <ProblemCard problem={problem} readiness={readinessMap[problem.slug]} />
+    </motion.div>
+  );
 
   return (
     <Layout>
@@ -202,6 +273,22 @@ export default function Problems() {
             {totalCount} real-world machine learning challenges across {Object.keys(difficultyConfig).length} difficulty tiers.
             Solve problems, earn rating points, climb the leaderboard.
           </p>
+
+          {isAuthenticated && (
+            <div className="mt-6 max-w-xl">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-gray-400">Your estimated ability</span>
+                <span className="text-xs font-medium text-white">{abilityLabel}</span>
+              </div>
+              <div className="w-full h-2 bg-[#222] rounded-full overflow-hidden">
+                <motion.div
+                  animate={{ width: `${abilityPct}%` }}
+                  transition={{ duration: 1, ease: 'easeOut' }}
+                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-[#E8392A]"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Difficulty Stats Bar */}
@@ -241,6 +328,30 @@ export default function Problems() {
               className="pl-10 h-11"
             />
           </div>
+
+          {isAuthenticated && (
+            <div className="flex gap-1 p-0.5 bg-[#111] rounded-lg border border-[#222]">
+              {['standard', 'adaptive'].map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setSortMode(mode)}
+                  className={`relative px-3 py-1.5 text-xs rounded-md transition-colors ${
+                    sortMode === mode ? 'text-white' : 'text-gray-400'
+                  }`}
+                >
+                  {sortMode === mode && (
+                    <motion.div
+                      layoutId="sortMode"
+                      className="absolute inset-0 bg-[#E8392A]/20 rounded-md border border-[#E8392A]/30"
+                      style={{ zIndex: -1 }}
+                    />
+                  )}
+                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
@@ -308,9 +419,7 @@ export default function Problems() {
                     <span className="text-sm text-muted-foreground">{probs.length} problems</span>
                   </div>
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {probs.map((problem) => (
-                      <ProblemCard key={problem.id || problem.slug} problem={problem} />
-                    ))}
+                    {probs.map((problem, index) => renderProblemCard(problem, index))}
                   </div>
                 </div>
               );
@@ -319,9 +428,7 @@ export default function Problems() {
         ) : (
           // Flat grid view (when filtered)
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProblems.map((problem) => (
-              <ProblemCard key={problem.id || problem.slug} problem={problem} />
-            ))}
+            {displayedProblems.map((problem, index) => renderProblemCard(problem, index))}
           </div>
         )}
       </div>

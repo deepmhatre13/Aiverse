@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen,
@@ -32,6 +32,8 @@ import ErrorState from '../components/ErrorState';
 import EmptyState from '../components/EmptyState';
 import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
+import { useLearner } from '../contexts/LearnerContext';
+import RecommendationCard from '../components/dashboard/RecommendationCard';
 import { formatINR } from '../lib/currency';
 import { getCourseVisual } from '../lib/courseVisuals';
 
@@ -57,7 +59,7 @@ const itemVariants = {
  * Premium Course Card Component
  * Clean, professional design with all key metrics visible
  */
-function CourseCard({ course, userRating }) {
+function CourseCard({ course, userRating, masteryPercent, isWeak, isRecommended }) {
   const visual = getCourseVisual(course.title, course.thumbnail);
   const isPaid = course.is_paid === true || parseFloat(course.price || 0) > 0;
   const isFree = course.is_free === true || parseFloat(course.price || 0) === 0;
@@ -129,16 +131,28 @@ function CourseCard({ course, userRating }) {
                 </Badge>
               )}
 
-              {/* Price Badge */}
-              <Badge
-                className={`${
-                  isFree
-                    ? 'bg-emerald-500/90 hover:bg-emerald-500'
-                    : 'bg-primary/90 hover:bg-primary'
-                } text-white font-semibold px-3 py-1`}
-              >
-                {priceDisplay}
-              </Badge>
+              <div className="flex flex-col items-end gap-2">
+                {isRecommended && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 300 }}
+                    className="bg-[#E8392A] text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
+                  >
+                    <Sparkles className="w-3 h-3" /> For You
+                  </motion.div>
+                )}
+
+                <Badge
+                  className={`${
+                    isFree
+                      ? 'bg-emerald-500/90 hover:bg-emerald-500'
+                      : 'bg-primary/90 hover:bg-primary'
+                  } text-white font-semibold px-3 py-1`}
+                >
+                  {priceDisplay}
+                </Badge>
+              </div>
             </div>
 
             {/* Enrolled Indicator */}
@@ -196,6 +210,26 @@ function CourseCard({ course, userRating }) {
               {course.description}
             </p>
 
+            {masteryPercent != null && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="text-muted-foreground capitalize">
+                    {(course.concept_tag || 'concept').replace(/_/g, ' ')} mastery
+                  </span>
+                  <span className={isWeak ? 'text-amber-500 font-medium' : 'text-muted-foreground'}>
+                    {Math.round(masteryPercent * 100)}%
+                    {isWeak ? ' · focus area' : ''}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${isWeak ? 'bg-amber-500' : 'bg-primary'}`}
+                    style={{ width: `${Math.min(100, masteryPercent * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Stats Footer */}
             <div className="flex items-center justify-between pt-4 border-t border-border text-xs text-muted-foreground">
               <div className="flex items-center gap-4">
@@ -227,6 +261,11 @@ function CourseCard({ course, userRating }) {
  */
 export default function Learn() {
   const { user, isAuthenticated } = useAuth();
+  const { recommendations, modelVersion, learnerAbility, isPersonalised, profile, getMasteryForConcept, isWeakConcept } = useLearner();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const conceptFilter = searchParams.get('concept');
+  const [activeTab, setActiveTab] = useState('all');
   const [courses, setCourses] = useState([]);
   const [tracks, setTracks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -237,7 +276,7 @@ export default function Learn() {
   const [filterType, setFilterType] = useState('all'); // all, free, paid
   const [filterLevel, setFilterLevel] = useState('all'); // all, beginner, intermediate, advanced
   const [filterTrack, setFilterTrack] = useState('all');
-  const [sortBy, setSortBy] = useState('newest'); // newest, popular, rating
+  const [sortBy, setSortBy] = useState(isAuthenticated ? 'relevance' : 'newest');
 
   // User's rating for lock checking
   const userRating = user?.rating || 0;
@@ -279,9 +318,39 @@ export default function Learn() {
     }
   };
 
+  const mlRecs = recommendations.slice(0, 5);
+  const recIds = useMemo(
+    () => new Set(recommendations.map((r) => r.content_id)),
+    [recommendations]
+  );
+  const recCourseIds = useMemo(
+    () => new Set(recommendations.map((r) => r.course_id).filter(Boolean)),
+    [recommendations]
+  );
+
+  const tabs = [
+    { id: 'all', label: 'All Courses' },
+    { id: 'for-you', label: 'For You' },
+    { id: 'weak-areas', label: 'Weak Areas' },
+  ];
+
   // Filter and sort courses
   const filteredCourses = useMemo(() => {
     let result = [...courses];
+
+    if (activeTab === 'for-you') {
+      result = result.filter((c) => recIds.has(c.id) || recCourseIds.has(c.id));
+    } else if (activeTab === 'weak-areas') {
+      result = result.filter((c) => profile?.weak_concepts?.includes(c.concept_tag));
+    }
+
+    if (conceptFilter) {
+      result = result.filter((c) =>
+        (c.tags || []).some(
+          (tag) => String(tag).toLowerCase().replace(/\s+/g, '_') === conceptFilter
+        )
+      );
+    }
 
     // Search filter
     if (searchQuery.trim()) {
@@ -321,6 +390,18 @@ export default function Learn() {
 
     // Sort
     switch (sortBy) {
+      case 'relevance':
+        if (isAuthenticated) {
+          result.sort((a, b) => {
+            const tagA = a.concept_tag || '';
+            const tagB = b.concept_tag || '';
+            const isWeakA = isWeakConcept(tagA) ? 1 : 0;
+            const isWeakB = isWeakConcept(tagB) ? 1 : 0;
+            if (isWeakA !== isWeakB) return isWeakB - isWeakA;
+            return getMasteryForConcept(tagA) - getMasteryForConcept(tagB);
+          });
+        }
+        break;
       case 'popular':
         result.sort(
           (a, b) =>
@@ -340,7 +421,7 @@ export default function Learn() {
     }
 
     return result;
-  }, [courses, searchQuery, filterType, filterLevel, filterTrack, sortBy]);
+  }, [courses, searchQuery, filterType, filterLevel, filterTrack, sortBy, conceptFilter, isAuthenticated, getMasteryForConcept, isWeakConcept, activeTab, recIds, recCourseIds, profile]);
 
   // Stats for hero section
   const stats = useMemo(() => {
@@ -459,6 +540,108 @@ export default function Learn() {
 
       {/* Main Content */}
       <section className="container mx-auto px-4 lg:px-8 py-10">
+        {isAuthenticated && (
+          <>
+            <div className="flex gap-1 p-1 bg-[#111] rounded-xl border border-[#222] w-fit mb-6">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`relative px-4 py-2 text-sm rounded-lg transition-colors z-10 ${
+                    activeTab === tab.id ? 'text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {activeTab === tab.id && (
+                    <motion.div
+                      layoutId="learnTab"
+                      className="absolute inset-0 bg-[#E8392A]/20 rounded-lg border border-[#E8392A]/30"
+                      style={{ zIndex: -1 }}
+                    />
+                  )}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {mlRecs.length > 0 && (
+              <div className="flex gap-3 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+                {mlRecs.map((rec, i) => (
+                  <motion.div
+                    key={rec.content_id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.07 }}
+                    className="shrink-0 w-52 bg-[#111] border border-[#222] rounded-xl p-4 cursor-pointer hover:border-[#E8392A]/40 transition-colors"
+                    onClick={() => navigate(`/learn/lessons/${rec.content_id}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && navigate(`/learn/lessons/${rec.content_id}`)}
+                  >
+                    <p className="text-white text-sm font-medium line-clamp-2 mb-2">{rec.title}</p>
+                    <span className="text-xs bg-[#E8392A]/10 text-[#E8392A] px-2 py-0.5 rounded-full">
+                      {rec.why_badge}
+                    </span>
+                    {rec.mastery_after != null && (
+                      <p className="text-xs text-green-400 mt-2">
+                        +{(rec.mastery_after * 100).toFixed(0)}% projected
+                      </p>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {isAuthenticated && (
+          <div className="mb-10">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#E8392A]" />
+              Recommended for you
+            </h2>
+            {modelVersion && (
+              <div className="flex flex-wrap items-center gap-3 mb-4 text-xs text-gray-600">
+                <span className="inline-flex items-center gap-2">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      modelVersion.includes('lgbm') ? 'bg-green-500' : 'bg-amber-500'
+                    }`}
+                  />
+                  {modelVersion.includes('lgbm')
+                    ? 'Powered by trained ML model'
+                    : 'Rule-based recommendations (ML model training in progress)'}
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="font-semibold text-foreground">Ability</span>
+                  {Math.round((learnerAbility || 0) * 100)}%
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  {isPersonalised ? 'Personalised learning active' : 'Personalisation is initializing'}
+                </span>
+              </div>
+            )}
+            {mlRecs.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {mlRecs.map((rec) => (
+                  <RecommendationCard key={`${rec.content_type}-${rec.content_id || rec.id}`} rec={rec} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 italic">
+                Start learning to unlock personalized recommendations
+              </p>
+            )}
+          </div>
+        )}
+
+        {conceptFilter && (
+          <div className="mb-6 text-sm text-muted-foreground">
+            Showing courses related to{' '}
+            <span className="text-primary capitalize">{conceptFilter.replace(/_/g, ' ')}</span>
+          </div>
+        )}
+
         {/* Filters Bar */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -533,6 +716,9 @@ export default function Learn() {
                   <SelectValue placeholder="Sort" />
                 </SelectTrigger>
                 <SelectContent>
+                  {isAuthenticated && (
+                    <SelectItem value="relevance">For You</SelectItem>
+                  )}
                   <SelectItem value="newest">Newest</SelectItem>
                   <SelectItem value="popular">Popular</SelectItem>
                   <SelectItem value="rating">Top Rated</SelectItem>
@@ -600,6 +786,16 @@ export default function Learn() {
                 key={course.id || course.slug}
                 course={course}
                 userRating={userRating}
+                masteryPercent={
+                  isAuthenticated && course.concept_tag
+                    ? getMasteryForConcept(course.concept_tag)
+                    : null
+                }
+                isWeak={isAuthenticated && isWeakConcept(course.concept_tag)}
+                isRecommended={
+                  isAuthenticated &&
+                  (recIds.has(course.id) || recCourseIds.has(course.id))
+                }
               />
             ))}
           </motion.div>

@@ -84,7 +84,7 @@ export default function Register() {
         password: formData.password,
       });
       toast.success('Account created successfully!');
-      navigate('/dashboard');
+      navigate('/onboarding');
     } catch (err) {
       const errorMessage = extractApiError(err.response?.data, 'Registration failed');
       
@@ -148,7 +148,7 @@ export default function Register() {
               // Pass id_token (not credential) to googleLogin
               await googleLogin(response.credential);
               toast.success('Account created successfully!');
-              navigate('/dashboard');
+              navigate('/onboarding');
             } catch (err) {
               const errorMessage = extractApiError(err.response?.data, 'Google sign-up failed');
               

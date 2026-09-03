@@ -76,6 +76,17 @@ from .views import (
     CourseQuizView,
     CourseQuizSubmitView,
 )
+from .views_adaptive import (
+    ModuleListView,
+    ProblemListView as AdaptiveProblemListView,
+    ProblemDetailView as AdaptiveProblemDetailView,
+    PersonalReadinessView,
+    PlaygroundRunView,
+    PlaygroundHistoryView,
+    PlaygroundCompareView,
+    GuidedExperimentView,
+    CourseProgressSummaryView,
+)
 from .webhook import stripe_webhook
 
 app_name = 'learn'
@@ -211,4 +222,15 @@ urlpatterns = [
     
     # Submit final course quiz
     path('courses/<slug:slug>/final-quiz/submit/', CourseQuizSubmitView.as_view(), name='course-final-quiz-submit'),
+
+    # ===== ADAPTIVE LEARNING =====
+    path('modules/', ModuleListView.as_view(), name='module-list'),
+    path('problems/', AdaptiveProblemListView.as_view(), name='problem-list'),
+    path('problems/<slug:slug>/', AdaptiveProblemDetailView.as_view(), name='problem-detail'),
+    path('problems/<slug:slug>/recommended-for-me/', PersonalReadinessView.as_view(), name='problem-readiness'),
+    path('playground/run/', PlaygroundRunView.as_view(), name='playground-run'),
+    path('playground/history/', PlaygroundHistoryView.as_view(), name='playground-history'),
+    path('playground/compare/', PlaygroundCompareView.as_view(), name='playground-compare'),
+    path('playground/guided/', GuidedExperimentView.as_view(), name='playground-guided'),
+    path('progress/summary/', CourseProgressSummaryView.as_view(), name='course-progress-summary'),
 ]

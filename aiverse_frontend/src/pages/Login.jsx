@@ -19,6 +19,7 @@ export default function Login() {
   const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const from = location.state?.from?.pathname || '/dashboard';
 
   // ===== GOOGLE SIGN-IN INITIALIZATION =====
   useEffect(() => {

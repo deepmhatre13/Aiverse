@@ -120,6 +120,17 @@ class Course(models.Model):
     # SEO and discoverability
     tags = models.JSONField(default=list, blank=True, help_text="Course tags for search")
     
+    # Adaptive learning & curriculum grouping
+    module = models.ForeignKey(
+        'Module',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='courses',
+    )
+    concept_tag = models.CharField(max_length=50, blank=True, db_index=True)
+    order = models.IntegerField(default=0)
+    
     # Publishing
     is_published = models.BooleanField(default=False, db_index=True)
     published_at = models.DateTimeField(null=True, blank=True)
@@ -269,6 +280,55 @@ class Lesson(models.Model):
     
     # Lesson notes/content
     notes = models.TextField(blank=True, help_text="Markdown lesson notes")
+    
+    # NEW FIELDS - Adaptive Learning Support
+    concept_tag = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="ML concept tag for mastery tracking"
+    )
+    difficulty = models.CharField(
+        max_length=20,
+        choices=[
+            ('beginner', 'Beginner'),
+            ('intermediate', 'Intermediate'),
+            ('advanced', 'Advanced'),
+        ],
+        default='beginner',
+        help_text="Lesson difficulty level"
+    )
+    prerequisites = models.ManyToManyField(
+        'self',
+        symmetrical=False,
+        blank=True,
+        related_name='unlocks',
+        help_text="Lessons that must be completed first"
+    )
+    learning_objectives = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of learning objectives for this lesson"
+    )
+    tags = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Additional tags for lesson categorization"
+    )
+    module = models.ForeignKey(
+        'Module',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='lessons',
+        help_text="Module this lesson belongs to"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Is this lesson available for enrollment"
+    )
     
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
@@ -751,6 +811,20 @@ class Quiz(models.Model):
         help_text="Time limit in seconds (null = no limit)"
     )
     
+    # NEW FIELDS - Adaptive Learning Support
+    concept_tag = models.CharField(
+        max_length=50,
+        db_index=True,
+        help_text="ML concept tag for mastery tracking",
+        null=True,
+        blank=True
+    )
+    difficulty = models.CharField(
+        max_length=20,
+        default='beginner',
+        help_text="Quiz difficulty level"
+    )
+    
     # Generation tracking
     generated_by = models.CharField(
         max_length=20,
@@ -1153,3 +1227,72 @@ class CourseQuizAttempt(models.Model):
         if self.passed and self.enrollment and not self.enrollment.certificate_issued:
             from .tasks import generate_certificate_task
             generate_certificate_task.delay(str(self.enrollment.id))
+# Place after the last class definition
+
+class Module(models.Model):
+    """Top-level grouping: Python & Maths | Core ML | Advanced ML | Deep Learning | MLOps"""
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(unique=True, max_length=100, blank=True, default='')
+    description = models.TextField()
+    order = models.IntegerField(default=0)
+    icon = models.CharField(max_length=50, blank=True)
+    
+    class Meta:
+        db_table = 'learn_modules'
+        ordering = ['order']
+    
+    def __str__(self):
+        return self.name
+
+
+class CodingProblem(models.Model):
+    """Production-grade ML coding problems with evaluation metadata."""
+    
+    DIFFICULTY_CHOICES = [
+        ('easy', 'Easy'),
+        ('medium', 'Medium'),
+        ('hard', 'Hard'),
+        ('expert', 'Expert'),
+    ]
+    
+    slug = models.SlugField(unique=True, max_length=255, db_index=True, blank=True, default='')
+    title = models.CharField(max_length=200)
+    difficulty = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES, default='easy')
+    category = models.CharField(max_length=50, default='Fundamentals')
+    concept_tag = models.CharField(max_length=50, db_index=True, default='classification')
+    metric = models.CharField(max_length=50, default='ACCURACY')
+    points = models.IntegerField(default=800)
+    description = models.TextField()
+    starter_code = models.TextField(blank=True)
+    test_cases = models.JSONField(default=list)
+    expected_output_format = models.TextField(blank=True)
+    constraints = models.JSONField(default=list)
+    hints = models.JSONField(default=list)
+    tags = models.JSONField(default=list)
+    lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='problems',
+    )
+    related_lessons = models.ManyToManyField(Lesson, blank=True, related_name='related_problems')
+    is_active = models.BooleanField(default=True)
+    solve_count = models.IntegerField(default=0)
+    avg_attempts = models.FloatField(default=0)
+    order = models.IntegerField(default=0)
+    expected_concepts = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'learn_coding_problems'
+        ordering = ['order', 'difficulty']
+        indexes = [
+            models.Index(fields=['concept_tag', 'difficulty']),
+            models.Index(fields=['slug']),
+            models.Index(fields=['is_active', 'difficulty']),
+        ]
+    
+    def __str__(self):
+        return f"{self.title} ({self.difficulty})"

@@ -1,10 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, Clock3, Flame, Plus, Trash2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts';
 import Layout from '../components/Layout';
 import { Card, CardContent } from '../components/ui/card';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
+import { useLearner } from '../contexts/LearnerContext';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
 import ProfileHeader from '../components/profile/ProfileHeader';
@@ -294,6 +305,148 @@ function EditProfileDialog({ open, onOpenChange, profile, onSave, isSaving }) {
   );
 }
 
+const MASTERY_COLORS = ['#E8392A', '#f97316', '#eab308', '#22c55e', '#3b82f6'];
+
+function LearnerMasterySection() {
+  const { masteries, getMasteryHistory } = useLearner();
+  const [historyData, setHistoryData] = useState({});
+  const [openConcept, setOpenConcept] = useState(null);
+
+  useEffect(() => {
+    const top5 = [...masteries].sort((a, b) => b.mastery_score - a.mastery_score).slice(0, 5);
+    top5.forEach(async (m) => {
+      const hist = await getMasteryHistory(m.concept_tag);
+      setHistoryData((prev) => ({
+        ...prev,
+        [m.concept_tag]: hist.trace || [],
+      }));
+    });
+  }, [masteries, getMasteryHistory]);
+
+  if (!masteries.length) return null;
+
+  const top5 = [...masteries].sort((a, b) => b.mastery_score - a.mastery_score).slice(0, 5);
+  const maxLen = Math.max(...top5.map((m) => (historyData[m.concept_tag] || []).length), 1);
+  const chartData = Array.from({ length: maxLen }, (_, i) => ({
+    step: i,
+    ...Object.fromEntries(
+      top5.map((m) => [m.concept_tag, (historyData[m.concept_tag] || [])[i] ?? null])
+    ),
+  }));
+
+  return (
+    <>
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-4 text-foreground">Mastery Over Time</h2>
+        <Card className="bg-card border border-border/70 rounded-xl">
+          <CardContent className="p-4">
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+                <XAxis dataKey="step" stroke="#444" tick={{ fill: '#666', fontSize: 11 }} />
+                <YAxis domain={[0, 1]} stroke="#444" tick={{ fill: '#666', fontSize: 11 }} />
+                <Tooltip
+                  contentStyle={{
+                    background: '#1a1a1a',
+                    border: '1px solid #333',
+                    color: 'white',
+                  }}
+                />
+                <Legend />
+                {top5.map((m, i) => (
+                  <Line
+                    key={m.concept_tag}
+                    type="monotone"
+                    dataKey={m.concept_tag}
+                    stroke={MASTERY_COLORS[i]}
+                    strokeWidth={2}
+                    dot={false}
+                    animationDuration={800 + i * 200}
+                    connectNulls
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-4 text-foreground">Concept Deep Dive</h2>
+        {masteries.map((m) => (
+          <div key={m.concept_tag} className="border border-border rounded-xl mb-2 overflow-hidden">
+            <button
+              type="button"
+              onClick={() =>
+                setOpenConcept(openConcept === m.concept_tag ? null : m.concept_tag)
+              }
+              className="w-full flex items-center justify-between px-4 py-3 bg-card hover:bg-muted/30 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-foreground font-medium">
+                  {m.concept_tag.replace(/_/g, ' ')}
+                </span>
+                {m.is_struggling && (
+                  <span className="text-xs text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full">
+                    Struggling
+                  </span>
+                )}
+              </div>
+              <span
+                className={`text-sm font-semibold ${
+                  m.mastery_score >= 0.7
+                    ? 'text-green-400'
+                    : m.mastery_score >= 0.4
+                      ? 'text-amber-400'
+                      : 'text-red-400'
+                }`}
+              >
+                {(m.mastery_score * 100).toFixed(0)}%
+              </span>
+            </button>
+            <AnimatePresence>
+              {openConcept === m.concept_tag && (
+                <motion.div
+                  initial={{ height: 0 }}
+                  animate={{ height: 'auto' }}
+                  exit={{ height: 0 }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div className="px-4 py-3 bg-muted/10 border-t border-border">
+                    <ResponsiveContainer width="100%" height={80}>
+                      <LineChart
+                        data={(historyData[m.concept_tag] || []).map((v, i) => ({
+                          step: i,
+                          mastery: v,
+                        }))}
+                      >
+                        <Line
+                          type="monotone"
+                          dataKey="mastery"
+                          stroke="#E8392A"
+                          strokeWidth={2}
+                          dot={false}
+                          animationDuration={600}
+                        />
+                        <YAxis domain={[0, 1]} hide />
+                        <XAxis dataKey="step" hide />
+                      </LineChart>
+                    </ResponsiveContainer>
+                    <p className="text-muted-foreground text-xs mt-2">
+                      Attempts: {m.quiz_attempts + m.coding_attempts} · Current:{' '}
+                      {(m.mastery_score * 100).toFixed(0)}%
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 export default function Profile() {
   const { user: authUser, isLoading, fetchUser } = useAuth();
   const queryClient = useQueryClient();
@@ -342,6 +495,7 @@ export default function Profile() {
         <SocialLinks profile={user} />
         <Skills skills={user?.skills || []} />
         <Projects projects={user?.projects || []} />
+        <LearnerMasterySection />
         <ActivitySnapshot profile={user} />
         <BioSection bio={user?.bio} />
 

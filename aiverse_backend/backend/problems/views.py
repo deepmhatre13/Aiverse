@@ -1,5 +1,10 @@
-from rest_framework import generics, filters
+from django.conf import settings
+from rest_framework import generics, filters, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
+
+from submissions.models import Submission
 from .models import Problem
 from .serializers import ProblemListSerializer, ProblemDetailSerializer
 from utils.cache import (
@@ -49,3 +54,32 @@ class ProblemDetailView(generics.RetrieveAPIView):
     serializer_class = ProblemDetailSerializer
     queryset = Problem.objects.filter(is_active=True)
     lookup_field = 'slug'
+
+
+class ProblemResponsesInternalView(APIView):
+    def get(self, request):
+        service_key = request.headers.get("X-Service-Key")
+        if service_key != settings.ML_INTERNAL_KEY:
+            return Response({"detail": "forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            limit = min(int(request.query_params.get("limit", 10000)), 10000)
+            offset = max(int(request.query_params.get("offset", 0)), 0)
+        except ValueError:
+            return Response(
+                {"detail": "limit and offset must be integers."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        submissions = Submission.objects.select_related("problem", "user").order_by("submitted_at")[offset: offset + limit]
+        results = [
+            {
+                "user_id": submission.user_id,
+                "problem_id": str(submission.problem_id),
+                "concept_tag": getattr(submission.problem, "concept_tag", "") or "",
+                "correct": submission.status == "accepted",
+                "timestamp": submission.submitted_at.isoformat(),
+            }
+            for submission in submissions
+        ]
+        return Response(results, status=status.HTTP_200_OK)
