@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from learner.models import LearnerProfile, ConceptMastery
 from learner.services.prerequisites import PrerequisiteResolver
+from learner.services.prerequisite_map import PREREQUISITE_MAP
 from learner.services.thresholds import (
     classify_mastery_score,
 )
@@ -15,21 +16,6 @@ from datetime import timedelta
 logger = logging.getLogger(__name__)
 
 User = get_user_model()
-
-# Prerequisite map: if weak in X, recommend Y first
-PREREQUISITE_MAP = {
-    'gradient_descent': ['statistics', 'linear_algebra'],
-    'neural_networks': ['gradient_descent', 'linear_algebra', 'regression'],
-    'regression': ['statistics', 'linear_algebra', 'python_ml'],
-    'classification': ['regression', 'statistics'],
-    'cnn': ['neural_networks'],
-    'rnn': ['neural_networks'],
-    'transformers': ['rnn', 'neural_networks'],
-    'pca': ['linear_algebra', 'statistics'],
-    'svm': ['classification', 'linear_algebra'],
-    'ensemble_learning': ['classification', 'regression'],
-    'backpropagation': ['neural_networks', 'gradient_descent'],
-}
 
 
 DEFAULT_LEARN_PATH_CONCEPTS = [
@@ -48,6 +34,7 @@ def _lesson_payload(lesson, *, reason_code=None, reason=None, prerequisite=None)
         'id': lesson.id,
         'title': lesson.title,
         'slug': lesson.slug,
+        'course_id': lesson.course_id,
         'course_slug': lesson.course.slug if lesson.course_id else None,
         'concept_tag': lesson.concept_tag,
         'difficulty': lesson.difficulty,
@@ -55,6 +42,7 @@ def _lesson_payload(lesson, *, reason_code=None, reason=None, prerequisite=None)
             'id': lesson.id,
             'title': lesson.title,
             'slug': lesson.slug,
+            'course_id': lesson.course_id,
             'course_slug': lesson.course.slug if lesson.course_id else None,
             'difficulty': lesson.difficulty,
             'concept_tag': lesson.concept_tag,
@@ -77,7 +65,23 @@ def _default_beginner_lessons(user):
     lessons = list(Lesson.objects.filter(is_active=True, difficulty='beginner').select_related('course').order_by('course__title', 'order')[:6])
     if lessons:
         return [_lesson_payload(lesson, reason_code='DEFAULT_PATH', reason='Start with the beginner path to build a strong foundation.') for lesson in lessons]
-    return []
+    # Fallback when no Lesson rows exist (fresh/empty database): expose the
+    # canonical beginner concept path at concept level so a brand-new user
+    # still gets an honest, non-fabricated starting point.
+    return [
+        {
+            'lesson': None,
+            'id': None,
+            'title': concept.replace('_', ' ').title(),
+            'slug': None,
+            'course_slug': None,
+            'concept_tag': concept,
+            'difficulty': 'beginner',
+            'reason_code': 'DEFAULT_PATH_CONCEPT',
+            'reason': 'Start with the beginner path to build a strong foundation.',
+        }
+        for concept in DEFAULT_LEARN_PATH_CONCEPTS
+    ]
 
 
 def _progress_payload(user):
@@ -93,12 +97,19 @@ def _progress_payload(user):
         if not lesson or not getattr(lesson, 'is_active', True):
             continue
         last_position = progress.last_position_seconds or progress.watch_time_seconds or 0
-        progress_percent = min(100, max(0, round((last_position / 600.0) * 100))) if last_position else 0
+        duration = getattr(lesson, 'duration_minutes', 0) or 0
+        duration_seconds = duration * 60
+        if duration_seconds > 0:
+            progress_percent = min(100, max(0, round((last_position / duration_seconds) * 100)))
+        else:
+            # No duration metadata: fall back to the legacy 10-minute heuristic.
+            progress_percent = min(100, max(0, round((last_position / 600.0) * 100))) if last_position else 0
         rows.append({
             'lesson': {
                 'id': lesson.id,
                 'title': lesson.title,
                 'slug': lesson.slug,
+                'course_id': lesson.course_id,
                 'course_slug': lesson.course.slug if lesson.course_id else None,
                 'difficulty': lesson.difficulty,
                 'concept_tag': lesson.concept_tag,
@@ -108,6 +119,41 @@ def _progress_payload(user):
             'reason': 'You have already completed a significant portion of this lesson and can continue from where you left off.',
         })
     return rows
+
+
+def _prerequisite_status_payload(user):
+    """Per-prerequisite SATISFIED / PARTIALLY_MASTERED / MISSING status.
+
+    Reuses the centralized readiness classifier (learner.services.thresholds)
+    so no second threshold exists. No mastery record at all is reported as
+    MISSING (the learner has not demonstrated any mastery yet); the raw
+    classifier label is preserved in `readiness`.
+    """
+    masteries = {
+        m.concept_tag: m.mastery_score
+        for m in ConceptMastery.objects.filter(user=user)
+    }
+    status_map = {}
+    for concept, prereqs in PREREQUISITE_MAP.items():
+        rows = []
+        for prereq in prereqs:
+            score = masteries.get(prereq)
+            readiness = classify_mastery_score(score, missing_is_unknown=True)
+            if readiness == 'satisfied':
+                status = 'SATISFIED'
+            elif readiness == 'partially_mastered':
+                status = 'PARTIALLY_MASTERED'
+            else:
+                status = 'MISSING'
+            rows.append({
+                'concept': prereq,
+                'mastery': score,
+                'readiness': readiness,
+                'status': status,
+            })
+        if rows:
+            status_map[concept] = rows
+    return status_map
 
 
 def build_personalized_learn_response(user):
@@ -129,19 +175,28 @@ def build_personalized_learn_response(user):
 
     strengthen_weak_areas = []
     seen = set()
+    completed_ids = {
+        lp['lesson_id'] for lp in LessonProgress.objects.filter(
+            user=user, is_completed=True
+        ).values('lesson_id')
+    }
     for concept in weak_concepts:
         for lesson in _lesson_by_concept(concept, limit=2):
             key = lesson.id
             if key in seen:
                 continue
             seen.add(key)
-            if lesson.id in {item['lesson']['id'] for item in continue_learning}:
+            # Completed lessons must not resurface as new recommendations.
+            if lesson.id in completed_ids or lesson.id in {item['lesson']['id'] for item in continue_learning}:
                 continue
             mastery = ConceptMastery.objects.filter(user=user, concept_tag=concept).first()
             reason = 'Your recent performance indicates that this concept is currently one of your weaker areas.'
             reason_code = 'WEAK_CONCEPT'
             if mastery is not None:
-                reason = f"Your mastery of {concept.replace('_', ' ')} is {mastery.mastery_score:.0%}, which is below the recommended readiness threshold."
+                reason = (
+                    f"Your current mastery of {concept.replace('_', ' ')} is "
+                    f"{mastery.mastery_score:.0%}, which is below the recommended readiness threshold."
+                )
             strengthen_weak_areas.append(_lesson_payload(lesson, reason_code=reason_code, reason=reason))
 
     missing_prerequisites = []
@@ -158,12 +213,31 @@ def build_personalized_learn_response(user):
                     if lesson.id in seen_missing:
                         continue
                     seen_missing.add(lesson.id)
+                    # Do not re-recommend a lesson the user already completed.
+                    if lesson.id in completed_ids:
+                        continue
+                    if prereq_mastery is not None:
+                        prereq_reason = (
+                            f"Complete {prereq.replace('_', ' ')} before moving to "
+                            f"{concept.replace('_', ' ')}. Your current mastery of "
+                            f"{prereq.replace('_', ' ')} is {prereq_mastery.mastery_score:.0%}."
+                        )
+                    else:
+                        prereq_reason = (
+                            f"Complete {prereq.replace('_', ' ')} before moving to "
+                            f"{concept.replace('_', ' ')}."
+                        )
                     missing_prerequisites.append(_lesson_payload(
                         lesson,
                         reason_code='MISSING_PREREQUISITE',
-                        reason=f"Complete {prereq.replace('_', ' ')} before moving to {concept.replace('_', ' ')}.",
+                        reason=prereq_reason,
                         prerequisite=concept,
                     ))
+
+    # A partially-mastered prerequisite concept is often also a weak concept;
+    # keep each lesson in exactly one section (prerequisite wins).
+    missing_ids = {item['id'] for item in missing_prerequisites}
+    strengthen_weak_areas = [item for item in strengthen_weak_areas if item['id'] not in missing_ids]
 
     recommended_for_you = []
     if continue_learning:
@@ -180,10 +254,9 @@ def build_personalized_learn_response(user):
     elif strengthen_weak_areas:
         next_best_lesson = strengthen_weak_areas[0]
     else:
+        already_surfaced = {item['lesson']['id'] for item in [*continue_learning, *strengthen_weak_areas, *missing_prerequisites]}
         for lesson in candidate_lessons:
-            if lesson.id in {item['lesson']['id'] for item in [*continue_learning, *strengthen_weak_areas, *missing_prerequisites]}:
-                continue
-            if LessonProgress.objects.filter(user=user, lesson=lesson, is_completed=True).exists():
+            if lesson.id in already_surfaced or lesson.id in completed_ids:
                 continue
             if not lesson.concept_tag:
                 continue
@@ -198,6 +271,8 @@ def build_personalized_learn_response(user):
     if next_best_lesson is None and default_path:
         next_best_lesson = default_path[0]
 
+    prerequisite_status = _prerequisite_status_payload(user)
+
     response = {
         'continue_learning': continue_learning,
         'recommended_for_you': recommended_for_you,
@@ -206,6 +281,7 @@ def build_personalized_learn_response(user):
         'next_best_lesson': next_best_lesson,
         'current_learning_path': default_path,
         'default_learning_path': default_path,
+        'prerequisite_status': prerequisite_status,
         'recommendation_count': len(recommended_for_you),
         'model_version': 'rule_based_fallback',
         'is_personalised': True,

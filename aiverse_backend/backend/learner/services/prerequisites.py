@@ -5,9 +5,9 @@ Canonical, reusable resolver that determines, for a requested concept, the
 status of each declared prerequisite (satisfied / partially mastered /
 missing) and which prerequisite the learner should tackle next.
 
-It reuses the existing concept prerequisite map (recommendations.services.
-PREREQUISITE_MAP) and ConceptMastery records as the single source of truth --
-no duplicate data and no new models.
+It reuses the canonical concept prerequisite map (learner.services.
+prerequisite_map.PREREQUISITE_MAP) and ConceptMastery records as the single
+source of truth -- no duplicate data and no new models.
 """
 import logging
 from typing import Dict, List
@@ -21,7 +21,7 @@ from learner.services.thresholds import (
 logger = logging.getLogger(__name__)
 
 # Reuse the single existing source of truth for concept -> prerequisite edges.
-from recommendations.services import PREREQUISITE_MAP  # noqa: E402
+from learner.services.prerequisite_map import PREREQUISITE_MAP
 
 
 class PrerequisiteResolver:

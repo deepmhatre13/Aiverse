@@ -99,6 +99,10 @@ TEMPLATES = [
     },
 ]
 
+# ---------------------------------------------------------------------------
+# Database configuration
+# ---------------------------------------------------------------------------
+# Production DATABASE_URL may point to a managed Postgres (e.g. Neon).
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@127.0.0.1:5432/aiverse")
 
 db_ssl_override = os.getenv("DB_SSL_REQUIRE")
@@ -113,6 +117,35 @@ else:
 DATABASES = {
     "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=db_ssl_require)
 }
+
+# ---------------------------------------------------------------------------
+# Test database configuration
+# ---------------------------------------------------------------------------
+# Running ``manage.py test`` against a shared remote Postgres (e.g. Neon) is
+# fragile: the test DB may already exist, schemas may be stale, and multiple
+# developers/CI can collide.  Django ALWAYS uses the connection's own engine
+# to create the test database (the ``TEST`` dict cannot switch engines), so we
+# fully override the ``default`` connection when a test run is detected.
+#
+# This NEVER touches the production DATABASE_URL or live database — it only
+# changes which database the *test runner* connects to.  CI can opt back into a
+# dedicated Postgres test DB by setting ``TEST_DATABASE_URL``.
+# ---------------------------------------------------------------------------
+import sys as _sys
+
+if "test" in _sys.argv or "jenkins" in _sys.argv:
+    _test_db_url = os.getenv("TEST_DATABASE_URL")
+    if _test_db_url:
+        DATABASES["default"] = dj_database_url.parse(
+            _test_db_url, conn_max_age=0, ssl_require=False
+        )
+    else:
+        # Local, hermetic SQLite test database — no network required.
+        DATABASES["default"] = {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "test_local.sqlite3",
+            "OPTIONS": {"timeout": 20},
+        }
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"

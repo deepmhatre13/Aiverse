@@ -9,14 +9,14 @@ from django.contrib.auth import get_user_model
 
 from learner.models import ConceptMastery
 from learner.services.prerequisites import PrerequisiteResolver, resolve_prerequisites
-from recommendations.services import PREREQUISITE_MAP
+from learner.services.prerequisite_map import PREREQUISITE_MAP
 
 User = get_user_model()
 
 
 class PrerequisiteResolverTests(TestCase):
     def setUp(self):
-                self.user = User.objects.create_user(email="bob@example.com", username="bob", password="pw")
+        self.user = User.objects.create_user(email="bob@example.com", username="bob", password="pw")
 
     def _set_mastery(self, concept_tag, score):
         return ConceptMastery.objects.update_or_create(
