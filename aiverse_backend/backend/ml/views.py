@@ -16,7 +16,7 @@ from .serializers import (
     SubmissionListSerializer,
     SubmissionDetailSerializer,
 )
-from .test_cases import PROBLEM_TEST_SUITES, ProblemTestSuite
+
 from .executor import execute_user_code
 from .api_validator import APICompatibilityLayer
 from .evaluation_service import evaluate_code
