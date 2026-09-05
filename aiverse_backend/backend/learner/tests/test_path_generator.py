@@ -7,6 +7,7 @@ same environment as the rest of the suite instead of silently failing with
 """
 
 from django.test import TestCase
+from rest_framework.test import APITestCase
 from django.contrib.auth import get_user_model
 from learner.models import ConceptMastery
 from learner.services.path_generator import LearningPathGenerator, get_learning_path_for_user
@@ -147,12 +148,34 @@ class TestGetLearningPathForUser(LearningPathGeneratorTestBase):
         self.assertIn('mastery_vector', path)
 
 
-class TestLearningPathAPI(LearningPathGeneratorTestBase):
-    """Test learning path API endpoint."""
+class TestLearningPathAPI(APITestCase):
+    """Test learning path API endpoint (DRF auth)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username='lpath', email='lpath@example.com', password='pw'
+        )
+        cls.module = Module.objects.create(
+            name='Test Module', slug='lpath-module',
+            description='desc', order=1,
+        )
+        cls.course = Course.objects.create(
+            title='Test Course', slug='lpath-course',
+            description='desc', module=cls.module, is_published=True,
+        )
+        Lesson.objects.create(
+            course=cls.course, title='Regression',
+            concept_tag='regression', order=1, duration_minutes=15,
+        )
+        ConceptMastery.objects.create(
+            user=cls.user, concept_tag='regression',
+            mastery_score=0.5, is_struggling=False,
+        )
 
     def test_learning_path_view(self):
         """Test LearningPathView endpoint."""
-        self.client.force_login(self.user)
+        self.client.force_authenticate(user=self.user)
 
         response = self.client.get('/api/learner/learning-path/')
 
@@ -165,8 +188,14 @@ class TestLearningPathAPI(LearningPathGeneratorTestBase):
         self.assertIn('mastery_vector', data)
 
 
-class TestKnowledgeGapView(LearningPathGeneratorTestBase):
-    """Test knowledge gap detection."""
+class TestKnowledgeGapView(APITestCase):
+    """Test knowledge gap detection (DRF auth)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username='kgap', email='kgap@example.com', password='pw'
+        )
 
     def test_knowledge_gaps_none(self):
         """Test when no knowledge gaps exist (fresh user, no masteries)."""
@@ -175,7 +204,7 @@ class TestKnowledgeGapView(LearningPathGeneratorTestBase):
             email='clean@example.com',
             password='pw123456',
         )
-        self.client.force_login(fresh_user)
+        self.client.force_authenticate(user=fresh_user)
 
         response = self.client.get('/api/learner/knowledge-gaps/')
 
@@ -188,7 +217,12 @@ class TestKnowledgeGapView(LearningPathGeneratorTestBase):
 
     def test_knowledge_gaps_detected(self):
         """Test when knowledge gaps are detected."""
-        self.client.force_login(self.user)
+        ConceptMastery.objects.create(
+            user=self.user, concept_tag='neural_networks',
+            mastery_score=0.3, quiz_attempts=6,
+            is_struggling=True, gap_detected=True,
+        )
+        self.client.force_authenticate(user=self.user)
 
         response = self.client.get('/api/learner/knowledge-gaps/')
 

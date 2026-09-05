@@ -34,6 +34,7 @@ import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useLearner } from '../contexts/LearnerContext';
 import RecommendationCard from '../components/dashboard/RecommendationCard';
+import { getPersonalizedLearn } from '../api/recommendationsApi';
 import { formatINR } from '../lib/currency';
 import { getCourseVisual } from '../lib/courseVisuals';
 
@@ -252,6 +253,155 @@ function CourseCard({ course, userRating, masteryPercent, isWeak, isRecommended 
         </div>
       </Link>
     </motion.div>
+  );
+}
+/**
+ * Personalized Learn panel (Phase 3).
+ * Surfaces the sections produced by GET /api/learn/recommendations/
+ * (build_personalized_learn_response) with each recommendation's short reason.
+ */
+
+function LessonItemCard({ item, reasonLabel }) {
+  const navigate = useNavigate();
+  const lesson = item.lesson || item;
+  const lessonId = lesson?.id ?? item.id;
+  const reason = item.reason || 'Recommended based on your learning progress.';
+  const progress = item.progress_percent;
+
+  const handleClick = () => {
+    const courseSlug = lesson?.course_slug || item.course_slug;
+    const slug = lesson?.slug;
+    if (courseSlug && slug) {
+      navigate(`/learn/courses/${courseSlug}/lessons/${slug}`);
+    } else if (lessonId) {
+      navigate(`/learn/lesson/${lessonId}`);
+    }
+  };
+
+  return (
+    <motion.div variants={itemVariants}>
+      <div
+        onClick={handleClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && handleClick()}
+        className="bg-[#111] border border-[#222] rounded-xl p-4 cursor-pointer hover:border-[#E8392A]/40 transition-colors h-full flex flex-col"
+      >
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] uppercase tracking-wide text-[#E8392A]/80 font-semibold">
+            {reasonLabel}
+          </span>
+          {typeof progress === 'number' && (
+            <span className="text-xs text-green-400 font-medium">{progress}%</span>
+          )}
+        </div>
+        <p className="text-white text-sm font-medium line-clamp-2 mb-1">
+          {lesson?.title || item.title}
+        </p>
+        {lesson?.concept_tag && (
+          <p className="text-xs text-gray-500 mb-2 capitalize">
+            {lesson.concept_tag.replace(/_/g, ' ')}
+          </p>
+        )}
+        <p className="text-xs text-gray-500 italic line-clamp-2 mt-auto">
+          &ldquo;{reason}&rdquo;
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
+function PersonalizedLearnPanel() {
+  const [payload, setPayload] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getPersonalizedLearn()
+      .then((data) => mounted && setPayload(data))
+      .catch((err) => mounted && setError(err));
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (error) return null;
+  if (!payload) return null;
+
+  const hasAny =
+    (payload.continue_learning || []).length ||
+    (payload.recommended_for_you || []).length ||
+    (payload.missing_prerequisites || []).length ||
+    (payload.strengthen_weak_areas || []).length;
+
+  if (!hasAny) return null;
+
+  const renderGrid = (items, reasonLabel) => (
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+    >
+      {items.map((item) => (
+        <LessonItemCard
+          key={`${reasonLabel}-${item.id ?? item.lesson?.id}`}
+          item={item}
+          reasonLabel={reasonLabel}
+        />
+      ))}
+    </motion.div>
+  );
+
+  const nextBest = payload.next_best_lesson;
+  const sectionClass = 'mb-8';
+
+  return (
+    <div className="mb-12">
+      {/* Next Best Lesson */}
+      <div className={`${sectionClass} bg-[#0d0d0d] border border-[#222] rounded-2xl p-5`}>
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-[#E8392A]" />
+          Next Best Lesson
+        </h2>
+        <div className="md:grid md:grid-cols-2 gap-4">
+          <LessonItemCard item={nextBest} reasonLabel={nextBest?.reason_code || 'Next'} />
+        </div>
+      </div>
+
+      {/* Continue Learning */}
+      {(payload.continue_learning || []).length > 0 && (
+        <div className={sectionClass}>
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500" />
+            Continue Learning
+          </h2>
+          {renderGrid(payload.continue_learning, 'Continue')}
+        </div>
+      )}
+
+      {/* Complete These First */}
+      {(payload.missing_prerequisites || []).length > 0 && (
+        <div className={sectionClass}>
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            Complete These First
+          </h2>
+          {renderGrid(payload.missing_prerequisites, 'Prerequisite')}
+        </div>
+      )}
+
+      {/* Strengthen Weak Areas */}
+      {(payload.strengthen_weak_areas || []).length > 0 && (
+        <div className={sectionClass}>
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-500" />
+            Strengthen Weak Areas
+          </h2>
+          {renderGrid(payload.strengthen_weak_areas, 'Weak Area')}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -634,6 +784,8 @@ export default function Learn() {
             )}
           </div>
         )}
+{/* Phase 3: Personalized Learn — Continue / Complete These First / Weak Areas / Next Best */}
+        {isAuthenticated && <PersonalizedLearnPanel />}
 
         {conceptFilter && (
           <div className="mb-6 text-sm text-muted-foreground">

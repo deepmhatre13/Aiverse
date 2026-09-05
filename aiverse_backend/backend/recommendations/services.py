@@ -60,9 +60,14 @@ def _lesson_by_concept(concept_tag, *, limit=1):
     return list(Lesson.objects.filter(concept_tag=concept_tag, is_active=True).select_related('course').order_by('difficulty', 'order')[:limit])
 
 
-def _default_beginner_lessons(user):
+def _default_beginner_lessons(user, completed_ids=None):
     from learn.models import Lesson
-    lessons = list(Lesson.objects.filter(is_active=True, difficulty='beginner').select_related('course').order_by('course__title', 'order')[:6])
+    completed_ids = completed_ids or set()
+    lessons = list(
+        Lesson.objects.filter(is_active=True, difficulty='beginner')
+        .exclude(id__in=completed_ids)
+        .select_related('course').order_by('course__title', 'order')[:6]
+    )
     if lessons:
         return [_lesson_payload(lesson, reason_code='DEFAULT_PATH', reason='Start with the beginner path to build a strong foundation.') for lesson in lessons]
     # Fallback when no Lesson rows exist (fresh/empty database): expose the
@@ -105,6 +110,7 @@ def _progress_payload(user):
             # No duration metadata: fall back to the legacy 10-minute heuristic.
             progress_percent = min(100, max(0, round((last_position / 600.0) * 100))) if last_position else 0
         rows.append({
+            'id': lesson.id,
             'lesson': {
                 'id': lesson.id,
                 'title': lesson.title,
@@ -161,7 +167,13 @@ def build_personalized_learn_response(user):
 
     continue_learning = _progress_payload(user)
 
-    default_path = _default_beginner_lessons(user)
+    completed_ids = {
+        lp['lesson_id'] for lp in LessonProgress.objects.filter(
+            user=user, is_completed=True
+        ).values('lesson_id')
+    }
+
+    default_path = _default_beginner_lessons(user, completed_ids=completed_ids)
 
     weak_concepts = []
     if hasattr(user, 'learner_profile'):
@@ -175,11 +187,6 @@ def build_personalized_learn_response(user):
 
     strengthen_weak_areas = []
     seen = set()
-    completed_ids = {
-        lp['lesson_id'] for lp in LessonProgress.objects.filter(
-            user=user, is_completed=True
-        ).values('lesson_id')
-    }
     for concept in weak_concepts:
         for lesson in _lesson_by_concept(concept, limit=2):
             key = lesson.id
@@ -234,10 +241,19 @@ def build_personalized_learn_response(user):
                         prerequisite=concept,
                     ))
 
-    # A partially-mastered prerequisite concept is often also a weak concept;
-    # keep each lesson in exactly one section (prerequisite wins).
-    missing_ids = {item['id'] for item in missing_prerequisites}
-    strengthen_weak_areas = [item for item in strengthen_weak_areas if item['id'] not in missing_ids]
+    # A weak concept can legitimately be a prerequisite too. Keep it in
+    # strengthen_weak_areas (with the mastery-based reason) AND in
+    # missing_prerequisites (with the ordering reason); the distinct
+    # reason_code/reason on each entry explains why it appears in each
+    # section. Only exact duplicate entries are removed.
+    seen_weak_ids = set()
+    deduped_weak = []
+    for item in strengthen_weak_areas:
+        if item['id'] in seen_weak_ids:
+            continue
+        seen_weak_ids.add(item['id'])
+        deduped_weak.append(item)
+    strengthen_weak_areas = deduped_weak
 
     recommended_for_you = []
     if continue_learning:
