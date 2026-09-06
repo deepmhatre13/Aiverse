@@ -17,11 +17,10 @@ from .serializers import (
     SubmissionDetailSerializer,
 )
 
-from .executor import execute_user_code
-from .api_validator import APICompatibilityLayer
-from .evaluation_service import evaluate_code
-from .metrics import LOWER_IS_BETTER_METRICS
-from .registry import list_problems, get_problem_definition
+# Heavy ML modules (numpy, sklearn, pandas) are imported lazily inside
+# the view methods below to keep Django/Gunicorn startup lightweight and
+# avoid OOM kills on Render starter instances.  They are only needed when
+# an actual evaluation/submission request arrives.
 
 
 class ProblemListView(APIView):
@@ -31,6 +30,7 @@ class ProblemListView(APIView):
     
     def get(self, request):
         """Return problems directly from the registry, not database."""
+        from .registry import list_problems
         problems = list_problems()
         
         # Convert registry ProblemDefinition objects to dicts for JSON serialization
@@ -63,6 +63,7 @@ class ProblemDetailView(APIView):
     
     def get(self, request, slug):
         """Fetch problem from registry by slug."""
+        from .registry import get_problem_definition
         try:
             problem = get_problem_definition(slug)
             
@@ -194,7 +195,7 @@ class ProblemSubmitView(APIView):
         "message": "Human-readable explanation",
         "submission_id": null
     }
-    """
+        """
     
     permission_classes = [IsAuthenticated]
     
@@ -204,6 +205,7 @@ class ProblemSubmitView(APIView):
         # ========== VALIDATION ==========
         
         # Get problem definition from registry
+        from .registry import get_problem_definition
         try:
             problem_def = get_problem_definition(slug)
         except ValueError:
@@ -230,7 +232,7 @@ class ProblemSubmitView(APIView):
             }, status=status.HTTP_200_OK)
         
         # ========== EVALUATE SERVER-SIDE (NEVER TRUST CLIENT) ==========
-        
+        from .evaluation_service import evaluate_code
         metric = request.data.get("metric")
         eval_result = evaluate_code(slug, code, metric)
         
